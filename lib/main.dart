@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'painel_screen.dart';
+
 // =======================================================
 // Paleta de cores da SICAPDA / Fluxe
 // =======================================================
@@ -69,6 +71,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!mounted) return;
     setState(() => _isLoading = false);
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => const PainelScreen()),
+    );
   }
 
   @override
