@@ -17,6 +17,7 @@ class AppColors {
   static const Color hintText = Color(0xFF6E6E6E);
 }
 
+//cores do sistema
 void main() {
   runApp(const SicapdaApp());
 }
@@ -39,6 +40,8 @@ class SicapdaApp extends StatelessWidget {
   }
 }
 
+//estrutura basica do sistema
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -46,6 +49,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+//Tela dinamica, guarda informacao do usuario enquanto interage com ele
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -53,6 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+  // valida oq o usuario digita
 
   @override
   void dispose() {
@@ -60,6 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.dispose();
     super.dispose();
   }
+  // limpa a memoria
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
@@ -77,6 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // simula o processo de um cadastro bem sucedido
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -88,6 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
           // Fundo com gradiente escuro + brilhos tecnológicos nos cantos
           _buildBackgroundDecoration(size),
 
+          // interfacxe visual e responsividade de camadas
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -130,6 +138,8 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  //estrutura visual completa do formulario de login
+
   // -----------------------------------------------------
   // Fundo: gradiente escuro + brilhos amarelos nos cantos
   // -----------------------------------------------------
@@ -140,10 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
           gradient: RadialGradient(
             center: Alignment(0, -0.6),
             radius: 1.4,
-            colors: [
-              Color(0xFF1A1A1A),
-              AppColors.background,
-            ],
+            colors: [Color(0xFF1A1A1A), AppColors.background],
           ),
         ),
         child: Stack(
@@ -165,6 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+  // efeitos visuais de iluminação tecnológica no plano de fundo da tela
 
   Widget _glowCircle(double diameter, Color color) {
     return Container(
@@ -172,12 +180,11 @@ class _LoginScreenState extends State<LoginScreen> {
       height: diameter,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [color, Colors.transparent],
-        ),
+        gradient: RadialGradient(colors: [color, Colors.transparent]),
       ),
     );
   }
+// círculo perfeito utilizando um gradiente radial que começa com a cor escolhida no centro e vai desaparecendo suavemente
 
   // -----------------------------------------------------
   // Logo
@@ -216,8 +223,14 @@ class _LoginScreenState extends State<LoginScreen> {
           letterSpacing: 1.2,
         ),
         children: [
-          TextSpan(text: 'SICA', style: TextStyle(color: AppColors.textPrimary)),
-          TextSpan(text: 'PDA', style: TextStyle(color: AppColors.accent)),
+          TextSpan(
+            text: 'SICA',
+            style: TextStyle(color: AppColors.textPrimary),
+          ),
+          TextSpan(
+            text: 'PDA',
+            style: TextStyle(color: AppColors.accent),
+          ),
         ],
       ),
     );
@@ -240,10 +253,7 @@ class _LoginScreenState extends State<LoginScreen> {
         SizedBox(height: 6),
         Text(
           'Faça login para continuar',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 16,
-          ),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
         ),
       ],
     );
@@ -346,8 +356,10 @@ class _LoginScreenState extends State<LoginScreen> {
             suffixIcon: suffixIcon,
             filled: true,
             fillColor: AppColors.fieldBackground,
-            contentPadding:
-                const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 16,
+              horizontal: 16,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(color: AppColors.fieldBorder),
@@ -429,59 +441,12 @@ class _LoginScreenState extends State<LoginScreen> {
               )
             : const Text(
                 'Entrar',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
       ),
     );
   }
-
-  // -----------------------------------------------------
-  // Divisor "ou"
-  // -----------------------------------------------------
-  // Widget _buildDivider() {
-  //   return Row(
-  //     children: [
-  //       Expanded(child: Divider(color: AppColors.fieldBorder, thickness: 1)),
-  //       Padding(
-  //         padding: const EdgeInsets.symmetric(horizontal: 12),
-  //         child: Text(
-  //           'ou',
-  //           style: TextStyle(color: AppColors.textSecondary.withOpacity(0.8), fontSize: 13),
-  //         ),
-  //       ),
-  //       Expanded(child: Divider(color: AppColors.fieldBorder, thickness: 1)),
-  //     ],
-  //   );
-  // }
-
-  // -----------------------------------------------------
-  // Botão "Criar conta"
-  // -----------------------------------------------------
-  // Widget _buildCreateAccountButton() {
-  //   return SizedBox(
-  //     height: 54,
-  //     child: OutlinedButton(
-  //       onPressed: () {
-  //         // TODO: navegar para tela de cadastro
-  //       },
-  //       style: OutlinedButton.styleFrom(
-  //         foregroundColor: AppColors.accent,
-  //         side: const BorderSide(color: AppColors.accent, width: 1.2),
-  //         shape: RoundedRectangleBorder(
-  //           borderRadius: BorderRadius.circular(16),
-  //         ),
-  //       ),
-  //       child: const Text(
-  //         'Criar conta',
-  //         style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-  //       ),
-  //     ),
-  //   );
-  // }
-
+  
   // -----------------------------------------------------
   // Rodapé "Feito pela Fluxe"
   // -----------------------------------------------------
@@ -495,7 +460,10 @@ class _LoginScreenState extends State<LoginScreen> {
           Text.rich(
             TextSpan(
               text: 'Feito pela ',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 18),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 18,
+              ),
               children: const [
                 TextSpan(
                   text: 'Fluxe',
