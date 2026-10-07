@@ -109,3 +109,4 @@ class ApiClient {
 
   void close() => _http.close();
 }
+
