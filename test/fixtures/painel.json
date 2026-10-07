@@ -1,0 +1,117 @@
+{
+    "sucesso": true,
+    "cardsResumo": [
+        {
+            "chave": "usuarios",
+            "label": "Usuários Ativos",
+            "valor": 20,
+            "variacao": 0.0,
+            "periodo": "este mês",
+            "icone": "icone bi-person-fill"
+        },
+        {
+            "chave": "acessos",
+            "label": "Acessos Realizados",
+            "valor": 61,
+            "variacao": -9.0,
+            "periodo": "este mês",
+            "icone": "icone bi-door-open-fill"
+        },
+        {
+            "chave": "refeicoes",
+            "label": "Refeições Previstas",
+            "valor": 98,
+            "variacao": -16.9,
+            "periodo": "próx. 7 dias",
+            "icone": "icone bi-cup-hot-fill"
+        },
+        {
+            "chave": "acuracia",
+            "label": "Acurácia da Previsão",
+            "valor": 84.2,
+            "sufixo": "%",
+            "variacao": -6.0,
+            "periodo": "vs. 30 dias antes",
+            "icone": "icone bi-graph-up-arrow"
+        }
+    ],
+    "graficoDemanda": {
+        "labels": [
+            "22/09",
+            "23/09",
+            "24/09",
+            "25/09",
+            "28/09",
+            "29/09",
+            "30/09",
+            "01/10",
+            "02/10",
+            "05/10",
+            "06/10"
+        ],
+        "previsto": [
+            31.0,
+            31.0,
+            28.0,
+            30.0,
+            32.0,
+            30.0,
+            30.0,
+            28.0,
+            27.0,
+            27.0,
+            32.0
+        ],
+        "realizado": [
+            34.0,
+            29.0,
+            34.0,
+            37.0,
+            36.0,
+            35.0,
+            34.0,
+            33.0,
+            36.0,
+            30.0,
+            31.0
+        ]
+    },
+    "graficoDistribuicao": {
+        "labels": [
+            "Café",
+            "Almoço",
+            "Jantar"
+        ],
+        "valores": [
+            32,
+            35,
+            33
+        ],
+        "cores": [
+            "#FFC107",
+            "#0D0D0D",
+            "#6B7280"
+        ]
+    },
+    "previsaoProximasHoras": [],
+    "alertas": [
+        {
+            "tipo": "aviso",
+            "titulo": "Desperdício acima da meta",
+            "descricao": "10,1% na última semana (meta 8%). Reduza cerca de 3,6 kg por semana."
+        },
+        {
+            "tipo": "info",
+            "titulo": "Maior movimento previsto",
+            "descricao": "Quarta-feira (07/10): cerca de 16 pessoas."
+        },
+        {
+            "tipo": "info",
+            "titulo": "Feriado: Nossa Senhora Aparecida",
+            "descricao": "Previsão de operação mínima em 12/10.",
+            "data": "12/10",
+            "rotulo": "Feriado"
+        }
+    ],
+    "mesReferencia": "Outubro 2026"
+}

@@ -1,0 +1,138 @@
+{
+    "sucesso": true,
+    "cardsResumo": [
+        {
+            "chave": "total",
+            "label": "Total Presente",
+            "valor": 15,
+            "extra": "Colaboradores no local",
+            "icone": "bi-people-fill"
+        },
+        {
+            "chave": "operadores",
+            "label": "Operadores de Produção",
+            "valor": 8,
+            "extra": "presentes agora",
+            "icone": "bi-gear-fill"
+        },
+        {
+            "chave": "supervisores",
+            "label": "Supervisores",
+            "valor": 4,
+            "extra": "presentes agora",
+            "icone": "bi-person-check-fill"
+        },
+        {
+            "chave": "prestadores",
+            "label": "Prestadores de Serviço",
+            "valor": 3,
+            "extra": "presentes agora",
+            "icone": "bi-briefcase-fill"
+        }
+    ],
+    "grupos": [
+        {
+            "chave": "operadores",
+            "titulo": "Operadores de Produção",
+            "icone": "gear",
+            "presentes": 8,
+            "pessoas": [
+                {
+                    "nome": "Pessoa 2",
+                    "funcao": "Cargo 2",
+                    "entrada": "07:39"
+                },
+                {
+                    "nome": "Pessoa 1",
+                    "funcao": "Cargo 1",
+                    "entrada": "08:14"
+                },
+                {
+                    "nome": "Pessoa 17",
+                    "funcao": "Cargo 17",
+                    "entrada": "08:28"
+                },
+                {
+                    "nome": "Pessoa 5",
+                    "funcao": "Cargo 5",
+                    "entrada": "10:21"
+                },
+                {
+                    "nome": "Pessoa 15",
+                    "funcao": "Cargo 15",
+                    "entrada": "12:28"
+                },
+                {
+                    "nome": "Pessoa 7",
+                    "funcao": "Cargo 7",
+                    "entrada": "12:35"
+                },
+                {
+                    "nome": "Pessoa 10",
+                    "funcao": "Cargo 10",
+                    "entrada": "13:03"
+                },
+                {
+                    "nome": "Pessoa 20",
+                    "funcao": "Cargo 20",
+                    "entrada": "13:33"
+                }
+            ],
+            "restantes": 0
+        },
+        {
+            "chave": "supervisores",
+            "titulo": "Supervisores",
+            "icone": "badge",
+            "presentes": 4,
+            "pessoas": [
+                {
+                    "nome": "Pessoa 18",
+                    "funcao": "Cargo 18",
+                    "entrada": "07:50"
+                },
+                {
+                    "nome": "Pessoa 8",
+                    "funcao": "Cargo 8",
+                    "entrada": "08:16"
+                },
+                {
+                    "nome": "Pessoa 3",
+                    "funcao": "Cargo 3",
+                    "entrada": "12:51"
+                },
+                {
+                    "nome": "Pessoa 13",
+                    "funcao": "Cargo 13",
+                    "entrada": "13:31"
+                }
+            ],
+            "restantes": 0
+        },
+        {
+            "chave": "prestadores",
+            "titulo": "Prestadores de Serviço",
+            "icone": "briefcase",
+            "presentes": 3,
+            "pessoas": [
+                {
+                    "nome": "Pessoa 4",
+                    "funcao": "Cargo 4",
+                    "entrada": "10:45"
+                },
+                {
+                    "nome": "Pessoa 14",
+                    "funcao": "Cargo 14",
+                    "entrada": "12:35"
+                },
+                {
+                    "nome": "Pessoa 9",
+                    "funcao": "Cargo 9",
+                    "entrada": "13:20"
+                }
+            ],
+            "restantes": 0
+        }
+    ],
+    "dataExtenso": "Terça-feira, 6 de outubro de 2026"
+}
