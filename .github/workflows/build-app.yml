@@ -150,9 +150,18 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     permissions:
-      contents: write   # TEMPORÁRIO (envio da captura para conferência); volta para "read" depois
+      contents: write   # TEMPORÁRIO (apagar o branch de conferência); volta para "read" no próximo commit
     steps:
       - uses: actions/checkout@v4
+
+      # TEMPORÁRIO: apaga o branch "ci-capturas" criado só para conferir a captura (sai no próximo commit).
+      - name: (temporário) Apagar o branch de conferência
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git push "https://x-access-token:$($env:GITHUB_TOKEN)@github.com/$($env:GITHUB_REPOSITORY).git" --delete ci-capturas
 
       - uses: subosito/flutter-action@v2
         with:
@@ -234,23 +243,6 @@ jobs:
           path: captura/
           if-no-files-found: ignore
           retention-days: 7
-
-      # TEMPORÁRIO: envia a captura para um branch só para conferência; será removido logo depois.
-      - name: (temporário) Enviar a captura para conferência
-        if: always()
-        continue-on-error: true
-        shell: pwsh
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          if (-not (Test-Path captura/SICAPDA-no-windows.png)) { exit 0 }
-          $tmp = Join-Path $env:RUNNER_TEMP 'capturas'
-          New-Item -ItemType Directory -Force $tmp | Out-Null
-          Copy-Item captura/SICAPDA-no-windows.png $tmp
-          git -C $tmp init -q
-          git -C $tmp add .
-          git -C $tmp -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "captura do app no Windows"
-          git -C $tmp push --force "https://x-access-token:$($env:GITHUB_TOKEN)@github.com/$($env:GITHUB_REPOSITORY).git" HEAD:refs/heads/ci-capturas
 
   # ------------------------------------------------------------------------------------------------
   pacote:
