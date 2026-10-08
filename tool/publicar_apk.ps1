@@ -30,7 +30,7 @@ $ErrorActionPreference = 'Stop'
 Set-Location (Join-Path $PSScriptRoot '..')
 
 if (-not $SemBuild) {
-    $argsBuild = @('build', 'apk', '--release')
+    $argsBuild = @('build', 'apk', '--release', '--target-platform', 'android-arm,android-arm64')
     if ($Servidor) { $argsBuild += "--dart-define=SICAPDA_SERVER_URL=$Servidor" }
     & flutter @argsBuild
     if ($LASTEXITCODE -ne 0) { throw 'flutter build apk falhou.' }

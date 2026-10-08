@@ -85,8 +85,10 @@ jobs:
             echo "systemProp.org.gradle.internal.repository.initial.backoff=4000"
           } >> ~/.gradle/gradle.properties
 
+          # Só arquiteturas ARM (todos os celulares e tablets Android): sem x86_64 (emuladores de PC)
+          # o arquivo fica bem menor. Para emulador, use `flutter run`.
           for tentativa in 1 2 3 4; do
-            if flutter build apk --release; then
+            if flutter build apk --release --target-platform android-arm,android-arm64; then
               exit 0
             fi
             echo "::warning::Tentativa $tentativa do build falhou (provável limite de requisições do Maven Central). Aguardando para tentar de novo..."
@@ -106,12 +108,20 @@ jobs:
           SHA256="$(sha256sum dist/SICAPDA.apk | cut -d' ' -f1)"
           TAMANHO="$(stat -c%s dist/SICAPDA.apk)"
 
-          # minSdk real do APK compilado (para a página mostrar "Android X ou superior")
+          # minSdk real do APK compilado (a página mostra "Android X ou superior")
           AAPT2="$(ls -d "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1 || true)"
           MIN_SDK=""
           if [ -n "$AAPT2" ]; then
-            MIN_SDK="$("$AAPT2" dump badging dist/SICAPDA.apk | sed -n "s/^sdkVersion:'\([0-9]*\)'.*/\1/p" | head -1)"
             "$AAPT2" dump permissions dist/SICAPDA.apk || true
+            MIN_SDK="$("$AAPT2" dump xmltree --file AndroidManifest.xml dist/SICAPDA.apk 2>/dev/null \
+              | sed -n 's/.*minSdkVersion[^=]*=\(([^)]*)\)\{0,1\}\(0x[0-9a-fA-F]*\|[0-9][0-9]*\).*/\2/p' | head -1 || true)"
+            if [ -z "$MIN_SDK" ]; then
+              MIN_SDK="$("$AAPT2" dump badging dist/SICAPDA.apk 2>/dev/null | sed -n "s/^sdkVersion:'\([0-9]*\)'.*/\1/p" | head -1 || true)"
+            fi
+            # xmltree pode devolver hexadecimal (0x18): converte para decimal
+            case "$MIN_SDK" in 0x*) MIN_SDK="$((MIN_SDK))" ;; esac
+            echo "minSdk detectado: '${MIN_SDK}'"
+            "$AAPT2" dump xmltree --file AndroidManifest.xml dist/SICAPDA.apk 2>/dev/null | grep -iE "minSdk|targetSdk|versionName|versionCode" || true
           fi
 
           jq -n \
