@@ -181,6 +181,52 @@ jobs:
         shell: pwsh
         run: ./tool/empacotar_windows.ps1 -Saida dist
 
+      # Teste de fumaça: instala em silêncio, abre o app e confere que ele continua rodando (se faltasse alguma
+      # DLL, o Windows fecharia o programa na hora). Depois desinstala.
+      - name: Testar o instalador (instalar, abrir e desinstalar)
+        shell: pwsh
+        run: |
+          $pasta = Join-Path $env:RUNNER_TEMP 'sicapda-instalado'
+          $inst = Start-Process -FilePath (Resolve-Path dist/SICAPDA-Setup.exe).Path -PassThru -Wait `
+            -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=$pasta"
+          if ($inst.ExitCode -ne 0) { throw "O instalador terminou com código $($inst.ExitCode)" }
+
+          $exe = Join-Path $pasta 'SICAPDA.exe'
+          if (-not (Test-Path $exe)) { throw 'SICAPDA.exe não foi instalado.' }
+          Get-ChildItem $pasta | Select-Object Name, Length | Format-Table -AutoSize | Out-String | Write-Host
+
+          $app = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 12
+          if ($app.HasExited) { throw "O aplicativo fechou sozinho (código $($app.ExitCode))." }
+          Write-Host "O aplicativo abriu e continua rodando (PID $($app.Id), janela: '$($app.MainWindowTitle)')."
+
+          # captura da tela (reduzida, em base64 no log) para conferir a aparência no Windows de verdade
+          try {
+            Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+            $tela = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $img = New-Object System.Drawing.Bitmap $tela.Width, $tela.Height
+            $g = [System.Drawing.Graphics]::FromImage($img)
+            $g.CopyFromScreen($tela.Location, [System.Drawing.Point]::Empty, $tela.Size)
+            $g.Dispose()
+            $w = [Math]::Min(1000, $tela.Width); $h = [int]($tela.Height * $w / $tela.Width)
+            $mini = New-Object System.Drawing.Bitmap $img, $w, $h
+            $codec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/jpeg' }
+            $ps = New-Object System.Drawing.Imaging.EncoderParameters 1
+            $ps.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter ([System.Drawing.Imaging.Encoder]::Quality, [long]72)
+            $jpg = Join-Path $env:RUNNER_TEMP 'captura.jpg'
+            $mini.Save($jpg, $codec, $ps)
+            $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($jpg))
+            Write-Host "CAPTURA_INICIO $($tela.Width)x$($tela.Height) $($b64.Length)"
+            for ($i = 0; $i -lt $b64.Length; $i += 3000) { Write-Host ('CAPTURA64:' + $b64.Substring($i, [Math]::Min(3000, $b64.Length - $i))) }
+            Write-Host 'CAPTURA_FIM'
+          } catch { Write-Host "Não foi possível capturar a tela: $($_.Exception.Message)" }
+
+          Stop-Process -Id $app.Id -Force
+          Start-Sleep -Seconds 2
+          $un = Join-Path $pasta 'unins000.exe'
+          if (Test-Path $un) { Start-Process -FilePath $un -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait }
+          Write-Host 'Instalação, abertura e desinstalação funcionaram.'
+
       - uses: actions/upload-artifact@v4
         with:
           name: SICAPDA-windows
