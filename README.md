@@ -10,6 +10,8 @@ Aplicativo mobile do **SICAPDA** — *Sistema Inteligente de Controle de Acesso 
 
 Feito em **Flutter (Dart)**, ele traz para o celular as mesmas telas e funcionalidades da versão web ([SystemFluxe](https://github.com/rianzitos/SystemFluxe)), lendo o **mesmo banco de dados MySQL**: o que muda na web aparece no app, e vice-versa.
 
+📲 **Quer instalar no Android?** Baixe o APK em [fluxeteam.com.br/sicapda#baixar](https://fluxeteam.com.br/sicapda#baixar) (ou veja [como gerar e publicar o APK](#gerar-e-publicar-o-apk)).
+
 ---
 
 ## Propósito do aplicativo
@@ -104,6 +106,67 @@ Na tela de login, toque em **Servidor** e informe o endereço do SystemFluxe. De
 
 ---
 
+## Gerar e publicar o APK
+
+O instalador do app (APK) é oferecido na página de apresentação do sistema, na seção **Baixar** (`/sicapda#baixar`, atalho `/app`), com botão de download e QR code. Para gerar o APK **não precisa de Android Studio**: o GitHub compila para você.
+
+### Opção 1 — pelo GitHub (recomendado)
+
+O workflow [`Build APK`](.github/workflows/build-apk.yml) analisa, testa e compila o app a cada Pull Request, a cada push na `main`, a cada tag `v*` e também sob demanda (**Actions → Build APK → Run workflow**).
+
+1. No GitHub, abra **Actions → Build APK** e entre na execução mais recente.
+2. Em **Artifacts**, baixe `SICAPDA-apk`: um `.zip` com `SICAPDA.apk` e `app.json` (versão, tamanho, SHA-256 e data).
+3. Copie os dois arquivos para a pasta `storage/downloads/` do **SystemFluxe**, no servidor. Pronto: a página passa a mostrar versão, tamanho, data e SHA-256, e o botão **Baixar APK** funciona.
+
+Para publicar uma versão "oficial", aumente o `version:` do `pubspec.yaml` (ex.: `1.0.1+2`), faça o merge e crie uma tag. A **Release** do GitHub sai com o APK anexado:
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+### Opção 2 — no seu computador (Windows)
+
+```powershell
+.\tool\publicar_apk.ps1                                    # compila e copia SICAPDA.apk + app.json para ..\SystemFluxe\storage\downloads
+.\tool\publicar_apk.ps1 -Destino C:\Projetos\SystemFluxe   # SystemFluxe em outro lugar
+.\tool\publicar_apk.ps1 -Servidor https://fluxeteam.com.br # servidor padrão embutido no app
+.\tool\publicar_apk.ps1 -SemBuild                          # só publica o APK que já foi compilado
+```
+
+Ou à mão: `flutter build apk --release --target-platform android-arm,android-arm64`. O arquivo sai em `build/app/outputs/flutter-apk/app-release.apk`.
+
+> O APK inclui só as arquiteturas **ARM**, que cobrem todos os celulares e tablets Android e deixam o arquivo bem menor (cerca de 37 MB). Emuladores de PC (x86_64) não rodam esse APK; no emulador use `flutter run`.
+
+### Assinatura do APK (importante para atualizações)
+
+O Android só atualiza um app instalado quando o novo APK é assinado com a **mesma chave**. Sem chave própria o build usa a chave de *debug*: serve para testar, mas **muda a cada execução do GitHub Actions**, e aí quem já instalou precisa desinstalar a versão anterior antes de instalar a nova.
+
+Para ter uma chave própria, crie uma vez e guarde o arquivo e as senhas em local seguro (se perder a chave, não há como atualizar o app dos usuários). **Nunca envie ao Git**; `key.properties` e `*.jks` já estão no `.gitignore`.
+
+```bash
+keytool -genkeypair -v -keystore sicapda-release.jks -alias sicapda -keyalg RSA -keysize 2048 -validity 10000
+```
+
+- **No GitHub:** em *Settings → Secrets and variables → Actions*, crie os secrets `ANDROID_KEYSTORE_BASE64` (saída de `base64 -w0 sicapda-release.jks`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`sicapda`) e, se a senha da chave for diferente da do keystore, `ANDROID_KEY_PASSWORD`. A partir daí o workflow assina sozinho.
+- **No seu computador:** coloque o `.jks` em `android/app/` e crie `android/key.properties`:
+  ```properties
+  storeFile=sicapda-release.jks
+  storePassword=sua-senha
+  keyAlias=sicapda
+  keyPassword=sua-senha
+  ```
+
+### Outros detalhes
+
+- **Servidor padrão:** `https://fluxeteam.com.br`. Para outro endereço na compilação: `flutter build apk --release --dart-define=SICAPDA_SERVER_URL=https://seu-servidor`. O usuário também pode trocar em **Servidor** na tela de login.
+- **Só HTTPS:** o APK de release bloqueia `http://`. O tráfego sem SSL só funciona em builds de debug (`flutter run`).
+- **Permissões:** apenas `INTERNET`.
+- **Identificador do app:** hoje é `com.example.fluxe_app` (padrão do Flutter). Se um dia for publicar na Play Store, troque por um identificador próprio **antes** da primeira publicação; depois não dá para mudar.
+- **Ícone e nome:** o app aparece como **SICAPDA**. A arte do ícone fica em `assets/icon/`; para regenerar: `dart run flutter_launcher_icons`.
+
+---
+
 ## Estrutura do projeto
 
 ```
@@ -130,7 +193,10 @@ lib/
     ├── relatorios_screen.dart
     └── configuracoes_screen.dart
 assets/fonts/                  # Inter e Sora
+assets/icon/                   # Arte do ícone do aplicativo
 test/                          # Testes + respostas reais da API em test/fixtures/
+tool/publicar_apk.ps1          # Compila o APK e publica no storage/downloads do SystemFluxe
+.github/workflows/build-apk.yml  # CI: analisa, testa e compila o APK (artefato SICAPDA-apk)
 ```
 
 ---
@@ -186,6 +252,9 @@ Os testes cobrem formatação, cliente HTTP, leitura dos modelos e o fluxo compl
 | "API não configurada no servidor" | Falta o `API_SECRET` (≥ 32 caracteres) no `config/.env` do SystemFluxe. |
 | "E-mail ou senha inválidos" | Use o mesmo e-mail e senha cadastrados na versão web. |
 | Volta para o login sozinho | O token expirou (30 dias) ou o usuário foi removido do banco. |
+| "App não instalado" / "conflita com um pacote existente" ao atualizar | A versão instalada foi assinada com outra chave (comum com os APKs do GitHub sem a chave própria configurada). Desinstale o SICAPDA e instale de novo; o app só guarda o login. Veja [Assinatura do APK](#assinatura-do-apk-importante-para-atualizações). |
+| O Android avisa sobre "fonte desconhecida" ao instalar | Normal para apps instalados fora da Play Store. Permita a instalação para o navegador ou o gerenciador de arquivos nas configurações do celular. |
+| "Não foi possível conectar" só no APK, mas funciona no `flutter run` | O APK de release só aceita `https://`. Use um servidor com SSL ou rode com `flutter run` (debug). |
 | Painel sem dados ou "Sem movimento previsto" | Ainda não há registros nas catracas ou produção cadastrada, ou está fora do expediente. É o mesmo comportamento da web. |
 | `git pull` reclama de `pubspec.lock`, `linux/`, `macos/`, `windows/` | São arquivos gerados pelo Flutter. Descarte com `git checkout -- pubspec.lock analysis_options.yaml linux macos windows`, faça o pull e rode `flutter pub get`. |
 
