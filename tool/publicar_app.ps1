@@ -50,7 +50,7 @@ $semBom = New-Object Text.UTF8Encoding($false)   # o PHP não lê JSON com BOM
 if ($Plataforma -in 'Todas', 'Android') {
     if (-not $SemBuild) {
         # só arquiteturas ARM (todos os celulares); emulador de PC: use "flutter run"
-        & flutter build apk --release --target-platform android-arm,android-arm64 @defines
+        & flutter build apk --release --target-platform 'android-arm,android-arm64' @defines   # aspas: sem elas o PowerShell trata a vírgula como lista
         if ($LASTEXITCODE -ne 0) { throw 'flutter build apk falhou.' }
     }
     $apk = 'build\app\outputs\flutter-apk\app-release.apk'

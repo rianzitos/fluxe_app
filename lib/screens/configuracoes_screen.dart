@@ -272,7 +272,14 @@ class _SobreCard extends StatelessWidget {
   Widget build(BuildContext context) => AppCard(
         child: Row(
           children: [
-            const IconTile(Icons.bolt_rounded),
+            // emblema do SICAPDA sobre o preto da marca
+            Container(
+              width: 44,
+              height: 44,
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(color: AppColors.black, borderRadius: BorderRadius.circular(12)),
+              child: Image.asset('images/logo_sicapda.png', fit: BoxFit.contain, semanticLabel: 'Logo do SICAPDA'),
+            ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(

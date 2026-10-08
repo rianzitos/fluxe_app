@@ -149,6 +149,8 @@ jobs:
     name: Windows (compilar e gerar o instalador)
     runs-on: windows-latest
     timeout-minutes: 45
+    permissions:
+      contents: write   # TEMPORÁRIO (envio da captura para conferência); volta para "read" depois
     steps:
       - uses: actions/checkout@v4
 
@@ -200,7 +202,7 @@ jobs:
           if ($app.HasExited) { throw "O aplicativo fechou sozinho (código $($app.ExitCode))." }
           Write-Host "O aplicativo abriu e continua rodando (PID $($app.Id), janela: '$($app.MainWindowTitle)')."
 
-          # captura da tela (reduzida, em base64 no log) para conferir a aparência no Windows de verdade
+          # captura da tela com o app aberto (vira artefato para conferir a aparência no Windows de verdade)
           try {
             Add-Type -AssemblyName System.Windows.Forms, System.Drawing
             $tela = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
@@ -208,17 +210,9 @@ jobs:
             $g = [System.Drawing.Graphics]::FromImage($img)
             $g.CopyFromScreen($tela.Location, [System.Drawing.Point]::Empty, $tela.Size)
             $g.Dispose()
-            $w = [Math]::Min(1000, $tela.Width); $h = [int]($tela.Height * $w / $tela.Width)
-            $mini = New-Object System.Drawing.Bitmap $img, $w, $h
-            $codec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/jpeg' }
-            $ps = New-Object System.Drawing.Imaging.EncoderParameters 1
-            $ps.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter ([System.Drawing.Imaging.Encoder]::Quality, [long]72)
-            $jpg = Join-Path $env:RUNNER_TEMP 'captura.jpg'
-            $mini.Save($jpg, $codec, $ps)
-            $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($jpg))
-            Write-Host "CAPTURA_INICIO $($tela.Width)x$($tela.Height) $($b64.Length)"
-            for ($i = 0; $i -lt $b64.Length; $i += 3000) { Write-Host ('CAPTURA64:' + $b64.Substring($i, [Math]::Min(3000, $b64.Length - $i))) }
-            Write-Host 'CAPTURA_FIM'
+            New-Item -ItemType Directory -Force captura | Out-Null
+            $img.Save((Join-Path (Resolve-Path captura).Path 'SICAPDA-no-windows.png'), [System.Drawing.Imaging.ImageFormat]::Png)
+            Write-Host "Captura salva ($($tela.Width)x$($tela.Height))."
           } catch { Write-Host "Não foi possível capturar a tela: $($_.Exception.Message)" }
 
           Stop-Process -Id $app.Id -Force
@@ -233,6 +227,30 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SICAPDA-windows-captura
+          path: captura/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # TEMPORÁRIO: envia a captura para um branch só para conferência; será removido logo depois.
+      - name: (temporário) Enviar a captura para conferência
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          if (-not (Test-Path captura/SICAPDA-no-windows.png)) { exit 0 }
+          $tmp = Join-Path $env:RUNNER_TEMP 'capturas'
+          New-Item -ItemType Directory -Force $tmp | Out-Null
+          Copy-Item captura/SICAPDA-no-windows.png $tmp
+          git -C $tmp init -q
+          git -C $tmp add .
+          git -C $tmp -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "captura do app no Windows"
+          git -C $tmp push --force "https://x-access-token:$($env:GITHUB_TOKEN)@github.com/$($env:GITHUB_REPOSITORY).git" HEAD:refs/heads/ci-capturas
 
   # ------------------------------------------------------------------------------------------------
   pacote:
