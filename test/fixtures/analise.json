@@ -1,0 +1,167 @@
+{
+    "sucesso": true,
+    "inicio": "2026-10-01",
+    "cardsResumo": [
+        {
+            "chave": "produzido",
+            "label": "Total Produzido",
+            "valor": 130.0,
+            "sufixo": " kg",
+            "variacao": 3.2,
+            "positiva": true,
+            "periodo": "vs. mês anterior",
+            "extra": "Média: 32,5 kg/dia",
+            "icone": "bi-graph-up-arrow"
+        },
+        {
+            "chave": "desperdicado",
+            "label": "Total Desperdiçado",
+            "valor": 12.0,
+            "sufixo": " kg",
+            "variacao": -10.8,
+            "positiva": true,
+            "periodo": "vs. mês anterior",
+            "extra": "9,5% do total",
+            "icone": "bi-graph-down-arrow"
+        },
+        {
+            "chave": "pessoas",
+            "label": "Média de Pessoas",
+            "valor": 15.0,
+            "sufixo": "",
+            "variacao": -9.0,
+            "positiva": false,
+            "periodo": "vs. mês anterior",
+            "extra": "Por dia com movimento",
+            "icone": "bi-people-fill"
+        }
+    ],
+    "graficoPessoasDia": {
+        "labels": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+        ],
+        "valores": [
+            13,
+            14,
+            0,
+            0,
+            15,
+            19
+        ]
+    },
+    "graficoProducao": {
+        "labels": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+        ],
+        "valores": [
+            33.0,
+            36.0,
+            0.0,
+            0.0,
+            30.0,
+            31.0
+        ]
+    },
+    "graficoDesperdicio": {
+        "labels": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+        ],
+        "valores": [
+            2.5,
+            3.7,
+            0.0,
+            0.0,
+            2.9,
+            3.3
+        ]
+    },
+    "insights": [
+        {
+            "label": "Dia com maior fluxo",
+            "valor": "Dia 6 - 19 pessoas",
+            "icone": "trend-up"
+        },
+        {
+            "label": "Dia com menor desperdício",
+            "valor": "Dia 1 - 2,5 kg",
+            "icone": "trend-up"
+        },
+        {
+            "label": "Economia possível",
+            "valor": "-2,0 kg",
+            "icone": "pulse"
+        },
+        {
+            "label": "Tendência",
+            "valor": "Sem dados",
+            "icone": "trend-up"
+        }
+    ],
+    "mes": "2026-10",
+    "mesRotulo": "Outubro 2026",
+    "meses": [
+        {
+            "valor": "2026-10",
+            "rotulo": "Outubro 2026"
+        },
+        {
+            "valor": "2026-09",
+            "rotulo": "Setembro 2026"
+        },
+        {
+            "valor": "2026-08",
+            "rotulo": "Agosto 2026"
+        },
+        {
+            "valor": "2026-07",
+            "rotulo": "Julho 2026"
+        },
+        {
+            "valor": "2026-06",
+            "rotulo": "Junho 2026"
+        },
+        {
+            "valor": "2026-05",
+            "rotulo": "Maio 2026"
+        },
+        {
+            "valor": "2026-04",
+            "rotulo": "Abril 2026"
+        },
+        {
+            "valor": "2026-03",
+            "rotulo": "Março 2026"
+        },
+        {
+            "valor": "2026-02",
+            "rotulo": "Fevereiro 2026"
+        },
+        {
+            "valor": "2026-01",
+            "rotulo": "Janeiro 2026"
+        },
+        {
+            "valor": "2025-12",
+            "rotulo": "Dezembro 2025"
+        },
+        {
+            "valor": "2025-11",
+            "rotulo": "Novembro 2025"
+        }
+    ]
+}

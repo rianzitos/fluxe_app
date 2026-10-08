@@ -4,4 +4,6 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Só em debug: permite http:// (ex.: http://10.0.2.2:8000 no emulador). Produção usa https. -->
+    <application android:usesCleartextTraffic="true" tools:replace="android:usesCleartextTraffic" xmlns:tools="http://schemas.android.com/tools"/>
 </manifest>

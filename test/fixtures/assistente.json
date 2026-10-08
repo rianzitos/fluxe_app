@@ -1,0 +1,22 @@
+{
+    "sucesso": true,
+    "boasVindas": "Olá! Sou o assistente inteligente do SICAPDA. Posso ajudá-lo a prever a quantidade de pessoas e alimentos necessários. Como posso ajudar?",
+    "precisao": {
+        "precisao": 84.2,
+        "dias": 21
+    },
+    "eventos": [
+        {
+            "tipo": "info",
+            "titulo": "Feriado: Nossa Senhora Aparecida",
+            "descricao": "Previsão de operação mínima em 12/10.",
+            "data": "12/10",
+            "rotulo": "Feriado"
+        }
+    ],
+    "perguntasRapidas": [
+        "Previsão para amanhã",
+        "Previsão para sexta",
+        "Previsão semanal"
+    ]
+}

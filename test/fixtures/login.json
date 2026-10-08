@@ -1,0 +1,23 @@
+{
+    "sucesso": true,
+    "token": "fake-token-for-tests",
+    "expira_em": 1793924275,
+    "usuario": {
+        "id": 1,
+        "nome": "Rian Rafael",
+        "email": "rian@fluxe.com",
+        "perfil": "admin",
+        "cargo": "Admin",
+        "telefone": null,
+        "matricula": null,
+        "foto": null,
+        "empresa": {
+            "id": 1,
+            "nome": "Fluxe",
+            "cnpj": "12345678000199",
+            "cidade": "Mococa",
+            "estado": "SP",
+            "horario_funcionamento": "07-18"
+        }
+    }
+}
