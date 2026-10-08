@@ -75,8 +75,24 @@ jobs:
             echo "::notice::Sem secrets de assinatura: o APK usa a chave de debug (ok para testes; para atualizar um app já instalado será preciso desinstalá-lo antes)."
           fi
 
+      # O Maven Central às vezes responde "429 Too Many Requests" para os servidores do GitHub.
+      # O Gradle repete os downloads com espera crescente e, se ainda assim falhar, repetimos o build.
       - name: Compilar APK (release)
-        run: flutter build apk --release
+        run: |
+          mkdir -p ~/.gradle
+          {
+            echo "systemProp.org.gradle.internal.repository.max.retries=8"
+            echo "systemProp.org.gradle.internal.repository.initial.backoff=4000"
+          } >> ~/.gradle/gradle.properties
+
+          for tentativa in 1 2 3 4; do
+            if flutter build apk --release; then
+              exit 0
+            fi
+            echo "::warning::Tentativa $tentativa do build falhou (provável limite de requisições do Maven Central). Aguardando para tentar de novo..."
+            sleep $((tentativa * 75))
+          done
+          exit 1
 
       - name: Preparar arquivos de publicação (SICAPDA.apk + app.json)
         run: |
