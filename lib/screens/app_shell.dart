@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_state.dart';
+import '../core/layout.dart';
 import '../core/theme.dart';
+import '../widgets/sicapda_logo.dart';
 import 'analise_screen.dart';
 import 'assistente_screen.dart';
 import 'configuracoes_screen.dart';
@@ -74,6 +76,35 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final conteudo = SafeArea(
+      bottom: false,
+      child: IndexedStack(
+        index: _index,
+        children: [for (var i = 0; i < _destinos.length; i++) _page(i)],
+      ),
+    );
+
+    // PC / tablet deitado: menu lateral sempre visível (igual ao painel web), sem barra de abas.
+    if (isWide(context)) {
+      return Scaffold(
+        key: _scaffoldKey,
+        body: Row(
+          children: [
+            SizedBox(
+              width: kSidebarWidth,
+              child: _SideMenu(fixed: true, selected: _index, onSelect: _select, onConfig: _openConfig),
+            ),
+            Expanded(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: kContentMaxWidth), child: conteudo),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       key: _scaffoldKey,
       drawer: _SideMenu(
@@ -87,13 +118,7 @@ class _AppShellState extends State<AppShell> {
           _openConfig();
         },
       ),
-      body: SafeArea(
-        bottom: false,
-        child: IndexedStack(
-          index: _index,
-          children: [for (var i = 0; i < _destinos.length; i++) _page(i)],
-        ),
-      ),
+      body: conteudo,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         height: 66,
@@ -116,26 +141,30 @@ class _AppShellState extends State<AppShell> {
 }
 
 class _SideMenu extends StatelessWidget {
+  /// true = painel fixo ao lado do conteúdo (PC); false = menu deslizante (celular).
+  final bool fixed;
   final int selected;
   final ValueChanged<int> onSelect;
   final VoidCallback onConfig;
 
-  const _SideMenu({required this.selected, required this.onSelect, required this.onConfig});
+  const _SideMenu({this.fixed = false, required this.selected, required this.onSelect, required this.onConfig});
 
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
     final user = app.user;
 
-    return Drawer(
-      backgroundColor: AppColors.black,
-      shape: const RoundedRectangleBorder(),
-      child: SafeArea(
+    Widget painel(Widget child) => fixed
+        ? ColoredBox(color: AppColors.black, child: child)
+        : Drawer(backgroundColor: AppColors.black, shape: const RoundedRectangleBorder(), child: child);
+
+    return painel(
+      SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
-              child: Align(alignment: Alignment.centerLeft, child: _logo()),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 28, 24, 20),
+              child: Align(alignment: Alignment.centerLeft, child: SicapdaLogo(width: 196)),
             ),
             Expanded(
               child: ListView(
@@ -188,7 +217,7 @@ class _SideMenu extends StatelessWidget {
                     onPressed: () async {
                       final ok = await confirmLogout(context);
                       if (ok && context.mounted) {
-                        Navigator.of(context).pop();
+                        if (!fixed) Navigator.of(context).pop(); // fecha o menu deslizante
                         await app.logout();
                       }
                     },
@@ -203,21 +232,6 @@ class _SideMenu extends StatelessWidget {
     );
   }
 
-  Widget _logo() => const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text.rich(TextSpan(
-            style: TextStyle(fontFamily: AppText.heading, fontSize: 26, fontWeight: FontWeight.w800),
-            children: [
-              TextSpan(text: 'SICA', style: TextStyle(color: Colors.white)),
-              TextSpan(text: 'PDA', style: TextStyle(color: AppColors.accent)),
-            ],
-          )),
-          SizedBox(height: 2),
-          Text('BY FLUXE',
-              style: TextStyle(color: Color(0xFF9A9AA3), fontSize: 11, letterSpacing: 1.6, fontWeight: FontWeight.w600)),
-        ],
-      );
 }
 
 class _MenuItem extends StatelessWidget {

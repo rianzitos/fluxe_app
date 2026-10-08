@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/api_client.dart';
 import '../core/app_state.dart';
+import '../core/layout.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/page_header.dart';
@@ -18,35 +19,41 @@ class ConfiguracoesScreen extends StatelessWidget {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            const PageHeader(title: 'Configurações', subtitle: 'Perfil, aparência e conexão', showBell: false),
-            Expanded(
-              child: PageList(children: [
-                if (user != null) _PerfilCard(app),
-                _TemaCard(app),
-                _ServidorCard(app),
-                _SobreCard(),
-                FilledButton.icon(
-                  onPressed: () async {
-                    final ok = await confirmLogout(context);
-                    if (ok && context.mounted) {
-                      Navigator.of(context).popUntil((r) => r.isFirst);
-                      await app.logout();
-                    }
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.black,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  icon: const Icon(Icons.logout_rounded, color: AppColors.accent),
-                  label: const Text('Sair da conta', style: TextStyle(fontWeight: FontWeight.w600)),
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: kContentMaxWidth),
+            child: Column(
+              children: [
+                const PageHeader(title: 'Configurações', subtitle: 'Perfil, aparência e conexão', showBell: false),
+                Expanded(
+                  child: PageList(children: [
+                    if (user != null) _PerfilCard(app),
+                    _TemaCard(app),
+                    _ServidorCard(app),
+                    _SobreCard(),
+                    FilledButton.icon(
+                      onPressed: () async {
+                        final ok = await confirmLogout(context);
+                        if (ok && context.mounted) {
+                          Navigator.of(context).popUntil((r) => r.isFirst);
+                          await app.logout();
+                        }
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.black,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      icon: const Icon(Icons.logout_rounded, color: AppColors.accent),
+                      label: const Text('Sair da conta', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                  ]),
                 ),
-              ]),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

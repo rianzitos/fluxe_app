@@ -142,26 +142,35 @@ class CardGrid extends StatelessWidget {
 
   const CardGrid({super.key, required this.children, this.columns = 2, this.spacing = 12});
 
-  @override
-  Widget build(BuildContext context) {
-    final rows = <Widget>[];
-    for (var i = 0; i < children.length; i += columns) {
-      final slice = children.sublist(i, (i + columns).clamp(0, children.length));
-      rows.add(IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var j = 0; j < slice.length; j++) ...[
-              if (j > 0) SizedBox(width: spacing),
-              Expanded(child: slice[j]),
-            ],
-          ],
-        ),
-      ));
-      if (i + columns < children.length) rows.add(SizedBox(height: spacing));
-    }
-    return Column(children: rows);
+  /// Em janelas largas (PC) 3 ou 4 cartões cabem lado a lado, como no painel web.
+  int _colunas(double largura) {
+    if (largura < 700) return columns;
+    if (children.length == 4 || children.length == 8) return 4;
+    if (children.length == 3 || children.length == 6) return 3;
+    return columns;
   }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, c) {
+        final cols = _colunas(c.maxWidth);
+        final rows = <Widget>[];
+        for (var i = 0; i < children.length; i += cols) {
+          final slice = children.sublist(i, (i + cols).clamp(0, children.length));
+          rows.add(IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var j = 0; j < slice.length; j++) ...[
+                  if (j > 0) SizedBox(width: spacing),
+                  Expanded(child: slice[j]),
+                ],
+              ],
+            ),
+          ));
+          if (i + cols < children.length) rows.add(SizedBox(height: spacing));
+        }
+        return Column(children: rows);
+      });
 }
 
 /// Título de seção dentro de um card.

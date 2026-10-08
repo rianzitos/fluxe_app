@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_state.dart';
+import '../core/layout.dart';
 import '../core/theme.dart';
 import '../models/models.dart';
 
@@ -28,7 +29,9 @@ class PageHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 8, 16, 12),
       child: Row(
         children: [
-          if (onMenu != null)
+          if (onMenu != null && isWide(context))
+            const SizedBox(width: 4) // menu lateral fixo: não precisa do botão (alinha com os cartões)
+          else if (onMenu != null)
             IconButton(
               tooltip: 'Menu',
               onPressed: onMenu,

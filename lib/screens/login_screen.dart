@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/api_client.dart';
 import '../core/app_state.dart';
 import '../core/theme.dart';
+import '../widgets/sicapda_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -77,10 +78,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _logo(),
-                        const SizedBox(height: 18),
-                        _title(),
-                        const SizedBox(height: 26),
+                        const Center(child: SicapdaLogo(width: 300)),
+                        const SizedBox(height: 34),
                         const Text('Bem-vindo de volta!',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w600)),
@@ -168,29 +167,6 @@ class _LoginScreenState extends State<LoginScreen> {
           shape: BoxShape.circle,
           gradient: RadialGradient(colors: [AppColors.accent.withValues(alpha: 0.30), Colors.transparent]),
         ),
-      );
-
-  Widget _logo() => Center(
-        child: Container(
-          width: 88,
-          height: 88,
-          decoration: BoxDecoration(
-            color: const Color(0xFF161616),
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: Image.asset('images/logo_sicapda.png', fit: BoxFit.contain),
-        ),
-      );
-
-  Widget _title() => const Text.rich(
-        TextSpan(
-          style: TextStyle(fontFamily: AppText.heading, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: 1.2),
-          children: [
-            TextSpan(text: 'SICA', style: TextStyle(color: Colors.white)),
-            TextSpan(text: 'PDA', style: TextStyle(color: AppColors.accent)),
-          ],
-        ),
-        textAlign: TextAlign.center,
       );
 
   Widget _errorBanner(String msg) => Container(

@@ -65,6 +65,7 @@ flutter:
 
   assets:
     - images/logo_sicapda.png
+    - assets/logo/sicapda_logo.png
 
   fonts:
     - family: Inter
@@ -78,6 +79,10 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: false
+  windows:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    icon_size: 256
   image_path: "assets/icon/icon.png"
   min_sdk_android: 21
   adaptive_icon_background: "#171717"

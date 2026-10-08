@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import '../core/api_client.dart';
 import '../core/app_state.dart';
 import '../core/format.dart';
+import '../core/salvar_arquivo.dart';
 import '../core/theme.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
@@ -140,11 +141,20 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> with TabRefresh {
       final q = _query..remove('pagina');
       final csv = await AppScope.read(context).api.getText('/relatorios/exportar', query: q);
       final nome = 'relatorio-acessos_${_deAplicado}_a_$_ateAplicado.csv';
-      await SharePlus.instance.share(ShareParams(
-        files: [XFile.fromData(utf8.encode(csv), mimeType: 'text/csv', name: nome)],
-        fileNameOverrides: [nome],
-        subject: 'Relatório de acessos',
-      ));
+      if (exportaParaPasta) {
+        // Windows: salva em Downloads e oferece abrir a pasta
+        final caminho = await salvarCsvNosDownloads(nome, csv);
+        messenger.showSnackBar(SnackBar(
+          content: const Text('Relatório salvo na pasta Downloads.'),
+          action: SnackBarAction(label: 'Abrir pasta', onPressed: () => mostrarNaPasta(caminho)),
+        ));
+      } else {
+        await SharePlus.instance.share(ShareParams(
+          files: [XFile.fromData(utf8.encode(csv), mimeType: 'text/csv', name: nome)],
+          fileNameOverrides: [nome],
+          subject: 'Relatório de acessos',
+        ));
+      }
     } on ApiException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {

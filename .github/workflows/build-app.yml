@@ -1,16 +1,20 @@
-# Compila o APK do SICAPDA nos servidores do GitHub (já têm Android SDK), sem precisar de Android Studio.
+# Compila o SICAPDA nos servidores do GitHub, sem precisar de Android Studio nem de Visual Studio:
+#   • Android  → SICAPDA.apk            (+ app.json)
+#   • Windows  → SICAPDA-Setup.exe      (+ app-windows.json), instalador feito com Inno Setup
 #
-#  • A cada Pull Request / push na main: analisa, testa e compila. O APK fica disponível na aba
-#    "Actions" → execução → "Artifacts" (SICAPDA-apk = SICAPDA.apk + app.json).
-#  • Ao criar uma tag de versão (ex.: v1.0.0): além disso, publica uma Release com o APK anexado.
+#  • A cada Pull Request / push na main: analisa, testa e compila. Os arquivos ficam na aba "Actions" →
+#    execução → "Artifacts" → SICAPDA-downloads (um .zip com tudo, pronto para copiar para
+#    storage/downloads do SystemFluxe).
+#  • Ao criar uma tag de versão (ex.: v1.0.0): além disso, publica uma Release com os instaladores anexados.
 #      git tag v1.0.0 && git push origin v1.0.0
 #
-# Assinatura: com os secrets abaixo o APK sai assinado com a SUA chave (necessário para que as
+# Assinatura do Android: com os secrets abaixo o APK sai assinado com a SUA chave (necessário para que as
 # atualizações instalem por cima da versão anterior). Sem eles, usa a chave de debug (ok para testes).
 #   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, (opcional) ANDROID_KEY_PASSWORD
-# Passo a passo no README ("Gerar e publicar o APK").
+# O instalador do Windows ainda não é assinado digitalmente (o SmartScreen avisa na primeira execução).
+# Passo a passo no README ("Gerar e publicar o aplicativo").
 
-name: Build APK
+name: Build do aplicativo
 
 on:
   pull_request:
@@ -23,12 +27,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: apk-${{ github.ref }}
+  group: build-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  apk:
-    name: Analisar, testar e compilar o APK
+  android:
+    name: Android (analisar, testar e compilar o APK)
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -138,26 +142,102 @@ jobs:
           name: SICAPDA-apk
           path: dist/
           if-no-files-found: error
+          retention-days: 7
+
+  # ------------------------------------------------------------------------------------------------
+  windows:
+    name: Windows (compilar e gerar o instalador)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.6'
+          cache: true
+
+      - name: Dependências
+        run: flutter pub get
+
+      - name: Compilar para Windows (release)
+        run: flutter build windows --release
+
+      # O Inno Setup costuma vir na imagem do GitHub; se não vier, instala (com repetição, o Chocolatey às vezes falha).
+      - name: Garantir o Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (Test-Path $iscc) { Write-Host "Inno Setup já instalado."; exit 0 }
+          foreach ($tentativa in 1..3) {
+            choco install innosetup -y --no-progress
+            if (Test-Path $iscc) { exit 0 }
+            Start-Sleep -Seconds (10 * $tentativa)
+          }
+          throw "Não foi possível instalar o Inno Setup."
+
+      - name: Gerar o instalador (SICAPDA-Setup.exe + app-windows.json)
+        shell: pwsh
+        run: ./tool/empacotar_windows.ps1 -Saida dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SICAPDA-windows
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  # ------------------------------------------------------------------------------------------------
+  pacote:
+    name: Reunir os arquivos para o site
+    needs: [android, windows]
+    # Se o Windows falhar, ainda entrega o APK (e o job "windows" fica vermelho para alguém olhar).
+    if: ${{ !cancelled() && needs.android.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SICAPDA-apk
+          path: SICAPDA-downloads
+
+      - uses: actions/download-artifact@v4
+        if: ${{ needs.windows.result == 'success' }}
+        with:
+          name: SICAPDA-windows
+          path: SICAPDA-downloads
+
+      - name: Conferir o pacote
+        run: |
+          ls -la SICAPDA-downloads
+          for f in SICAPDA-downloads/*.json; do echo "== $f"; cat "$f"; echo; done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SICAPDA-downloads
+          path: SICAPDA-downloads/
+          if-no-files-found: error
           retention-days: 90
 
   release:
     name: Publicar Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: apk
+    needs: [android, windows, pacote]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: SICAPDA-apk
+          name: SICAPDA-downloads
           path: dist
 
-      - name: Criar Release com o APK
+      - name: Criar Release com os instaladores
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/SICAPDA.apk dist/app.json \
+          ls -la dist
+          gh release create "$GITHUB_REF_NAME" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --title "SICAPDA ${GITHUB_REF_NAME}" \
             --generate-notes

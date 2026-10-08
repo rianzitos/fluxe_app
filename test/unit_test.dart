@@ -1,5 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:fluxe_app/core/api_client.dart';
 import 'package:fluxe_app/core/format.dart';
+import 'package:fluxe_app/core/salvar_arquivo.dart';
 import 'package:fluxe_app/models/models.dart';
 import 'package:fluxe_app/widgets/charts.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +11,35 @@ import 'package:flutter_test/flutter_test.dart';
 import 'helpers.dart';
 
 void main() {
+  group('exportação do relatório no PC', () {
+    late Directory pasta;
+    setUp(() => pasta = Directory.systemTemp.createTempSync('sicapda_csv_'));
+    tearDown(() => pasta.deleteSync(recursive: true));
+
+    test('salva em UTF-8 com BOM (Excel) e não sobrescreve arquivos existentes', () async {
+      final a = await salvarCsvNosDownloads('rel.csv', 'Nome;Função\nJosé;Operador\n', pasta: pasta);
+      final b = await salvarCsvNosDownloads('rel.csv', 'outro', pasta: pasta);
+
+      expect(a.endsWith('rel.csv'), isTrue);
+      expect(b.endsWith('rel (1).csv'), isTrue);
+      final bytes = File(a).readAsBytesSync();
+      expect(bytes.take(3), [0xEF, 0xBB, 0xBF]);
+      expect(utf8.decode(bytes.skip(3).toList()), 'Nome;Função\nJosé;Operador\n');
+    });
+
+    test('não duplica o BOM quando o texto já começa com ele', () async {
+      final a = await salvarCsvNosDownloads('rel.csv', '\uFEFFa;b', pasta: pasta);
+      final bytes = File(a).readAsBytesSync();
+      expect(bytes.take(6), [0xEF, 0xBB, 0xBF, 0x61, 0x3B, 0x62]);
+    });
+
+    test('cria a pasta se ela não existir', () async {
+      final sub = Directory('${pasta.path}${Platform.pathSeparator}Downloads');
+      final a = await salvarCsvNosDownloads('x.csv', 'a', pasta: sub);
+      expect(File(a).existsSync(), isTrue);
+    });
+  });
+
   group('formatação', () {
     test('números em pt-BR', () {
       expect(fmtNum(1234567), '1.234.567');
