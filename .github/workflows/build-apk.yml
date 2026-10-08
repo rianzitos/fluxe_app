@@ -1,0 +1,137 @@
+# Compila o APK do SICAPDA nos servidores do GitHub (já têm Android SDK), sem precisar de Android Studio.
+#
+#  • A cada Pull Request / push na main: analisa, testa e compila. O APK fica disponível na aba
+#    "Actions" → execução → "Artifacts" (SICAPDA-apk = SICAPDA.apk + app.json).
+#  • Ao criar uma tag de versão (ex.: v1.0.0): além disso, publica uma Release com o APK anexado.
+#      git tag v1.0.0 && git push origin v1.0.0
+#
+# Assinatura: com os secrets abaixo o APK sai assinado com a SUA chave (necessário para que as
+# atualizações instalem por cima da versão anterior). Sem eles, usa a chave de debug (ok para testes).
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, (opcional) ANDROID_KEY_PASSWORD
+# Passo a passo no README ("Gerar e publicar o APK").
+
+name: Build APK
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: Analisar, testar e compilar o APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.6'
+          cache: true
+
+      - name: Dependências
+        run: flutter pub get
+
+      - name: Análise estática
+        run: flutter analyze --no-fatal-infos
+
+      - name: Testes
+        run: flutter test
+
+      - name: Configurar assinatura (opcional)
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
+            {
+              echo "storeFile=release.jks"
+              echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+              echo "keyAlias=$ANDROID_KEY_ALIAS"
+              echo "keyPassword=${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
+            } > android/key.properties
+            echo "Assinando com a chave de release dos secrets."
+          else
+            echo "::notice::Sem secrets de assinatura: o APK usa a chave de debug (ok para testes; para atualizar um app já instalado será preciso desinstalá-lo antes)."
+          fi
+
+      - name: Compilar APK (release)
+        run: flutter build apk --release
+
+      - name: Preparar arquivos de publicação (SICAPDA.apk + app.json)
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/SICAPDA.apk
+
+          VERSAO_LINHA="$(grep -E '^version:' pubspec.yaml | head -1 | awk '{print $2}')"
+          VERSAO="${VERSAO_LINHA%%+*}"
+          BUILD="${VERSAO_LINHA##*+}"; [ "$BUILD" = "$VERSAO_LINHA" ] && BUILD=0
+          SHA256="$(sha256sum dist/SICAPDA.apk | cut -d' ' -f1)"
+          TAMANHO="$(stat -c%s dist/SICAPDA.apk)"
+
+          # minSdk real do APK compilado (para a página mostrar "Android X ou superior")
+          AAPT2="$(ls -d "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1 || true)"
+          MIN_SDK=""
+          if [ -n "$AAPT2" ]; then
+            MIN_SDK="$("$AAPT2" dump badging dist/SICAPDA.apk | sed -n "s/^sdkVersion:'\([0-9]*\)'.*/\1/p" | head -1)"
+            "$AAPT2" dump permissions dist/SICAPDA.apk || true
+          fi
+
+          jq -n \
+            --arg arquivo "SICAPDA.apk" --arg versao "$VERSAO" --argjson build "$BUILD" \
+            --argjson tamanho "$TAMANHO" --arg sha256 "$SHA256" \
+            --arg min_sdk "$MIN_SDK" --arg atualizado_em "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{arquivo:$arquivo, versao:$versao, build:$build, tamanho:$tamanho, sha256:$sha256,
+              min_sdk:(if $min_sdk == "" then null else ($min_sdk|tonumber) end), atualizado_em:$atualizado_em}' \
+            > dist/app.json
+          cat dist/app.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SICAPDA-apk
+          path: dist/
+          if-no-files-found: error
+          retention-days: 90
+
+  release:
+    name: Publicar Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: apk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SICAPDA-apk
+          path: dist
+
+      - name: Criar Release com o APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/SICAPDA.apk dist/app.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "SICAPDA ${GITHUB_REF_NAME}" \
+            --generate-notes

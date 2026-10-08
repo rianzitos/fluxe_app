@@ -9,8 +9,12 @@ import '../models/models.dart';
 import 'api_client.dart';
 
 /// Endereço padrão do SystemFluxe. Pode ser trocado na tela de login
-/// ("Servidor"), por exemplo para http://10.0.2.2:8000 no emulador Android.
-const String kDefaultBaseUrl = 'https://fluxeteam.com.br';
+/// ("Servidor"), por exemplo para http://10.0.2.2:8000 no emulador Android, ou na hora de
+/// compilar: flutter build apk --dart-define=SICAPDA_SERVER_URL=https://meu-servidor.com.br
+const String kDefaultBaseUrl = String.fromEnvironment(
+  'SICAPDA_SERVER_URL',
+  defaultValue: 'https://fluxeteam.com.br',
+);
 
 /// Onde o token de acesso fica guardado (abstraído para facilitar testes).
 abstract class TokenStore {
