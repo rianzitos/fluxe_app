@@ -246,6 +246,11 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      - name: Imagens de sistema do Android disponíveis (só para consulta)
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --list 2>/dev/null | grep -E 'system-images;android-3[3-5];' | sed 's/ *|.*//' | sort -u || true
+          nproc; free -m | head -2
+
       - name: Emulador Android 14 + teste do app
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -253,6 +258,8 @@ jobs:
           arch: x86_64
           target: google_apis
           profile: pixel_6
+          cores: 4
+          ram-size: 4096M
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: bash tool/ci/android_smoke.sh apk/SICAPDA.apk smoke

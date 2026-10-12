@@ -26,26 +26,49 @@ falhas=0
 ok()   { echo "PASS $1"; echo "PASS $1" >> "$OUT/resumo.txt"; }
 info() { echo "INFO $1"; echo "INFO $1" >> "$OUT/resumo.txt"; }
 erro() { echo "FAIL $1"; echo "FAIL $1" >> "$OUT/resumo.txt"; falhas=$((falhas + 1)); }
-# O emulador do CI é lento e, de vez em quando, o Android mostra um aviso "<app> isn't responding" por cima de tudo
-# (já apareceu para o Pixel Launcher, o app da tela inicial). O aviso escurece a tela e esconde os botões. Aqui ele é
-# fechado: se quem não responde é outro app (launcher, System UI), o processo dele é reiniciado; se for o SICAPDA, é
-# falha de verdade e devolve 1.
-limpar_avisos() {
-  local i foco pkg
-  for i in 1 2 3 4; do
-    foco=$(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus)
-    case "$foco" in
-      *"Application Not Responding"*)
-        pkg=$(printf '%s' "$foco" | sed -E 's/.*Application Not Responding: ([^} ]+).*/\1/')
-        if [ "$pkg" = "$PKG" ]; then return 1; fi
-        info "o Android avisou que $pkg não responde (emulador lento); reiniciei esse processo"
-        adb shell am force-stop "$pkg"; sleep 4 ;;
-      *) return 0 ;;
+# O emulador do CI é lento (2 a 4 núcleos, sem placa de vídeo) e, logo depois de ligar, o Pixel Launcher (o app da
+# tela inicial) às vezes trava: o Android mostra "Pixel Launcher isn't responding" e a janela do launcher continua
+# com o foco, então a tela do SICAPDA aparece por trás mas os toques nunca chegam nela. Esta função garante que o
+# SICAPDA é a janela em foco: se um aviso ANR de outro app estiver na tela, ou se outro app tiver o foco, reinicia
+# esse processo e abre o SICAPDA de novo. Devolve 0 se o SICAPDA está em foco, 1 se não deu, 2 se o ANR é do
+# próprio SICAPDA (falha de verdade).
+JANELAS=$(mktemp)
+garantir_app() {
+  local t anr pkg
+  for t in 1 2 3 4 5; do
+    adb shell dumpsys window > "$JANELAS" 2>/dev/null
+    anr=$(grep -o 'Application Not Responding: [^} ]*' "$JANELAS" | head -1 | sed 's/.*: //' | tr -d '\r')
+    if [ -n "$anr" ]; then
+      [ "$anr" = "$PKG" ] && return 2
+      info "o Android avisou que $anr não responde (emulador lento); reiniciei esse processo"
+      adb shell am force-stop "$anr"; sleep 4
+      continue
+    fi
+    pkg=$(grep -m1 mCurrentFocus "$JANELAS" | tr -d '\r' | sed -nE 's/.*Window\{[0-9a-f]+ u[0-9]+ ([^/ }]+)[/}].*/\1/p')
+    [ "$pkg" = "$PKG" ] && return 0
+    info "em foco está '${pkg:-nada}' e não o SICAPDA (tentativa $t); abrindo o app de novo"
+    case "$pkg" in
+      ""|android|NotificationShade|StatusBar) ;;                       # troca de tela em andamento: só espera
+      *) adb shell am force-stop "$pkg"; sleep 4 ;;                    # reinicia quem tomou o foco (ex.: launcher travado)
     esac
+    adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+    sleep 8
   done
-  return 0
+  return 1
 }
-foto() { limpar_avisos; adb exec-out screencap -p > "$OUT/$1.png"; }
+# Espera o Android acalmar depois de ligar (launcher e serviços do Google ainda subindo): até ~100 s.
+aguardar_calma() {
+  local i carga
+  for i in $(seq 1 20); do
+    carga=$(adb shell cat /proc/loadavg 2>/dev/null | cut -d' ' -f1 | tr -d '\r')
+    if [ -n "$carga" ] && awk -v c="$carga" 'BEGIN { exit !(c < 1.5) }'; then
+      info "o Android acalmou depois de $((i * 5 - 5)) s (carga $carga)"; return 0
+    fi
+    sleep 5
+  done
+  info "o Android ainda estava ocupado depois de 100 s (carga ${carga:-?}); segui assim mesmo"
+}
+foto() { garantir_app; adb exec-out screencap -p > "$OUT/$1.png"; }
 toque() { adb shell input tap "$1" "$2"; }
 fim() {
   kill "$MOCK" 2>/dev/null; wait "$MOCK" 2>/dev/null
@@ -76,7 +99,8 @@ MOCK=$!
 sleep 1
 
 adb wait-for-device
-adb shell input keyevent 82 >/dev/null 2>&1                       # destrava a tela
+adb shell wm dismiss-keyguard >/dev/null 2>&1                     # destrava a tela (sem mandar tecla ao launcher)
+aguardar_calma
 adb shell settings put secure show_ime_with_hard_keyboard 0 >/dev/null 2>&1
 { echo "Android $(adb shell getprop ro.build.version.release | tr -d '\r') (API $(adb shell getprop ro.build.version.sdk | tr -d '\r')), $(adb shell getprop ro.product.cpu.abi | tr -d '\r')";
   adb shell wm size; adb shell wm density; } | tee "$OUT/aparelho.txt"
@@ -100,8 +124,10 @@ cat "$OUT/pacote.txt"
 
 # ── 2) abrir ───────────────────────────────────────────────────────────────────
 adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
-sleep 15
-if limpar_avisos; then :; else erro "o SICAPDA parou de responder (aviso ANR do Android)"; fi
+sleep 10
+garantir_app; rc=$?
+if [ "$rc" -eq 2 ]; then erro "o SICAPDA parou de responder (aviso ANR do Android)"
+elif [ "$rc" -ne 0 ]; then erro "o SICAPDA não ficou em primeiro plano depois de aberto (veja as linhas INFO acima)"; fi
 foto 01-abertura
 PID=$(adb shell pidof "$PKG" | tr -d '\r')
 if [ -n "$PID" ]; then ok "o app abriu e continua rodando (pid $PID)"; else erro "o app não está rodando depois de abrir"; fi
@@ -118,7 +144,7 @@ fi
 X=0; Y=0
 ATUAL=$(mktemp --suffix=.png)                                      # captura de trabalho: não entra na pasta de saída
 achar_entrar() {
-  limpar_avisos
+  garantir_app
   adb exec-out screencap -p > "$ATUAL"
   if read -r nx ny < <(python3 tool/ci/detectar_botao.py "$ATUAL"); then X=$nx; Y=$ny; return 0; fi
   return 1
