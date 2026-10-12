@@ -402,7 +402,7 @@ jobs:
         run: |
           mkdir -p extras
           if [ -d smoke ]; then
-            for f in smoke/*.png smoke/resumo.txt smoke/mock.log; do
+            for f in smoke/*.png smoke/resumo*.txt smoke/mock.log; do
               [ -f "$f" ] && cp "$f" "extras/emulador-$(basename "$f")"
             done
           fi

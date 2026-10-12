@@ -3,6 +3,9 @@
 #
 #   bash tool/ci/android_smoke.sh caminho/do/SICAPDA.apk [pasta-de-saida]
 #
+# Se alguma verificação falhar, o teste inteiro roda UMA segunda vez do zero (o app é desinstalado antes): emuladores de
+# servidores compartilhados são lentos e às vezes tropeçam por motivos alheios ao app. Só vale o resultado da segunda.
+#
 # O que confere, usando o APK de release de verdade (o mesmo que vai para o site):
 #   1. instala no Android;
 #   2. abre e continua rodando, sem travar (logcat limpo);
@@ -14,20 +17,56 @@ set -u
 
 APK="${1:?uso: android_smoke.sh caminho/do/SICAPDA.apk [pasta-de-saida]}"
 OUT="${2:-smoke}"
+TENTATIVA="${3:-1}"
 PKG=br.com.fluxeteam.sicapda
 mkdir -p "$OUT"
 : > "$OUT/resumo.txt"
 falhas=0
 
 ok()   { echo "PASS $1"; echo "PASS $1" >> "$OUT/resumo.txt"; }
+info() { echo "INFO $1"; echo "INFO $1" >> "$OUT/resumo.txt"; }
 erro() { echo "FAIL $1"; echo "FAIL $1" >> "$OUT/resumo.txt"; falhas=$((falhas + 1)); }
-foto() { adb exec-out screencap -p > "$OUT/$1.png"; }
+# O emulador do CI é lento e, de vez em quando, o Android mostra um aviso "<app> isn't responding" por cima de tudo
+# (já apareceu para o Pixel Launcher, o app da tela inicial). O aviso escurece a tela e esconde os botões. Aqui ele é
+# fechado: se quem não responde é outro app (launcher, System UI), o processo dele é reiniciado; se for o SICAPDA, é
+# falha de verdade e devolve 1.
+limpar_avisos() {
+  local i foco pkg
+  for i in 1 2 3 4; do
+    foco=$(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus)
+    case "$foco" in
+      *"Application Not Responding"*)
+        pkg=$(printf '%s' "$foco" | sed -E 's/.*Application Not Responding: ([^} ]+).*/\1/')
+        if [ "$pkg" = "$PKG" ]; then return 1; fi
+        info "o Android avisou que $pkg não responde (emulador lento); reiniciei esse processo"
+        adb shell am force-stop "$pkg"; sleep 4 ;;
+      *) return 0 ;;
+    esac
+  done
+  return 0
+}
+foto() { limpar_avisos; adb exec-out screencap -p > "$OUT/$1.png"; }
 toque() { adb shell input tap "$1" "$2"; }
 fim() {
-  if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-    { echo "### Teste no emulador Android"; echo '```'; cat "$OUT/resumo.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+  kill "$MOCK" 2>/dev/null; wait "$MOCK" 2>/dev/null
+  if [ "$falhas" -gt 0 ] && [ "$TENTATIVA" -lt 2 ]; then
+    echo "$falhas verificação(ões) falharam; tentando mais uma vez, do zero."
+    cp "$OUT/resumo.txt" "$OUT/resumo-tentativa1.txt"
+    for f in "$OUT"/*.png; do [ -f "$f" ] && mv "$f" "${f%.png}-t1.png"; done
+    adb shell am force-stop "$PKG" >/dev/null 2>&1
+    adb uninstall "$PKG" >/dev/null 2>&1
+    exec bash "$0" "$APK" "$OUT" 2
   fi
-  kill "$MOCK" 2>/dev/null
+  [ "$falhas" -eq 0 ] && rm -f "$OUT"/*-t1.png                      # passou na segunda: as capturas da primeira não servem mais
+  if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    {
+      echo "### Teste no emulador Android"
+      if [ -f "$OUT/resumo-tentativa1.txt" ]; then
+        echo "Primeira tentativa (falhou):"; echo '```'; cat "$OUT/resumo-tentativa1.txt"; echo '```'; echo "Segunda tentativa, do zero:"
+      fi
+      echo '```'; cat "$OUT/resumo.txt"; echo '```'
+    } >> "$GITHUB_STEP_SUMMARY"
+  fi
   [ "$falhas" -eq 0 ] && echo "Tudo certo." || echo "$falhas verificação(ões) falharam."
   exit $((falhas > 0 ? 1 : 0))
 }
@@ -62,6 +101,7 @@ cat "$OUT/pacote.txt"
 # ── 2) abrir ───────────────────────────────────────────────────────────────────
 adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
 sleep 15
+if limpar_avisos; then :; else erro "o SICAPDA parou de responder (aviso ANR do Android)"; fi
 foto 01-abertura
 PID=$(adb shell pidof "$PKG" | tr -d '\r')
 if [ -n "$PID" ]; then ok "o app abriu e continua rodando (pid $PID)"; else erro "o app não está rodando depois de abrir"; fi
@@ -78,12 +118,22 @@ fi
 X=0; Y=0
 ATUAL=$(mktemp --suffix=.png)                                      # captura de trabalho: não entra na pasta de saída
 achar_entrar() {
+  limpar_avisos
   adb exec-out screencap -p > "$ATUAL"
   if read -r nx ny < <(python3 tool/ci/detectar_botao.py "$ATUAL"); then X=$nx; Y=$ny; return 0; fi
   return 1
 }
 
-achar_entrar || { erro "não achei o botão Entrar na tela de abertura (o login não apareceu?)"; fim; }
+achar_paciente() {                                                  # na abertura o app pode demorar: tenta por uns 45 s
+  local t
+  for t in 1 2 3 4 5 6; do
+    achar_entrar && return 0
+    info "tentativa $t: não achei o botão Entrar; janela em foco: $(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus | tr -d '\r' | sed 's/^ *//')"
+    sleep 7
+  done
+  return 1
+}
+achar_paciente || { erro "não achei o botão Entrar na tela de abertura (o login não apareceu?)"; fim; }
 ok "tela de login na tela (botão Entrar em ${X},${Y})"
 
 toque "$X" $((Y + $(dp 65)));  sleep 2                             # botão "Servidor": abre o campo do endereço
