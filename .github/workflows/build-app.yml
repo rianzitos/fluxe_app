@@ -1,0 +1,496 @@
+# Compila o SICAPDA nos servidores do GitHub, sem precisar de Android Studio nem de Visual Studio:
+#   • Android  → SICAPDA.apk            (+ app.json)          APK único: celulares ARM e emuladores x86_64
+#   • Web      → SICAPDA-web.zip                              versão para o navegador (vai em public/aplicativo do SystemFluxe)
+#   • Windows  → SICAPDA-Setup.exe      (+ app-windows.json)  instalador feito com Inno Setup
+#
+# O que cada tipo de execução faz:
+#   • Pull Request: analisa, testa e compila. Os arquivos ficam em Actions → execução → Artifacts.
+#   • Push na main ou tag v*: além disso, PUBLICA a Release "v<versão do pubspec.yaml>" com todos os arquivos
+#     anexados. É o link de download oficial (https://github.com/<repo>/releases/latest).
+#   • Push em branch claude/** ou execução manual: atualiza a Release de PRÉVIA "ci-preview" (marcada como
+#     pré-lançamento, nunca vira a "mais recente"), para baixar e testar antes de mesclar.
+#
+# O APK ainda é testado de verdade: o job "smoke-android" abre um emulador Android, instala o APK de release,
+# entra no app contra um servidor de mentira e reabre para conferir que a sessão ficou salva.
+#
+# Assinatura do Android: com os secrets abaixo o APK sai assinado com a SUA chave (necessário para que as
+# atualizações instalem por cima da versão anterior). Sem eles, usa a chave de debug (ok para testes).
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, (opcional) ANDROID_KEY_PASSWORD
+# O instalador do Windows ainda não é assinado digitalmente (o SmartScreen avisa na primeira execução).
+# Passo a passo no README ("Gerar e publicar o aplicativo").
+
+name: Build do aplicativo
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'claude/**']
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.47.6'
+
+jobs:
+  android:
+    name: Android (analisar, testar e compilar o APK)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Dependências
+        run: flutter pub get
+
+      - name: Análise estática
+        run: flutter analyze --no-fatal-infos
+
+      - name: Testes
+        run: flutter test
+
+      - name: Configurar assinatura (opcional)
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
+            {
+              echo "storeFile=release.jks"
+              echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+              echo "keyAlias=$ANDROID_KEY_ALIAS"
+              echo "keyPassword=${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
+            } > android/key.properties
+            echo "Assinando com a chave de release dos secrets."
+          else
+            echo "::notice::Sem secrets de assinatura: o APK usa a chave de debug (ok para testes; para atualizar um app já instalado será preciso desinstalá-lo antes)."
+          fi
+
+      # O Maven Central às vezes responde "429 Too Many Requests" para os servidores do GitHub.
+      # O Gradle repete os downloads com espera crescente e, se ainda assim falhar, repetimos o build.
+      - name: Compilar APK (release)
+        run: |
+          mkdir -p ~/.gradle
+          {
+            echo "systemProp.org.gradle.internal.repository.max.retries=8"
+            echo "systemProp.org.gradle.internal.repository.initial.backoff=4000"
+          } >> ~/.gradle/gradle.properties
+
+          # Um APK só, com as três arquiteturas: ARM de 32 e 64 bits (todos os celulares e tablets Android)
+          # e x86_64 (emuladores do Android Studio, Chromebooks, BlueStacks). Assim o mesmo arquivo roda em
+          # qualquer lugar, em vez de "instalei e deu erro" por causa da arquitetura.
+          for tentativa in 1 2 3 4; do
+            if flutter build apk --release --target-platform android-arm,android-arm64,android-x64; then
+              exit 0
+            fi
+            echo "::warning::Tentativa $tentativa do build falhou (provável limite de requisições do Maven Central). Aguardando para tentar de novo..."
+            sleep $((tentativa * 75))
+          done
+          exit 1
+
+      - name: Preparar arquivos de publicação (SICAPDA.apk + app.json)
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/SICAPDA.apk
+
+          VERSAO_LINHA="$(grep -E '^version:' pubspec.yaml | head -1 | awk '{print $2}')"
+          VERSAO="${VERSAO_LINHA%%+*}"
+          BUILD="${VERSAO_LINHA##*+}"; [ "$BUILD" = "$VERSAO_LINHA" ] && BUILD=0
+          SHA256="$(sha256sum dist/SICAPDA.apk | cut -d' ' -f1)"
+          TAMANHO="$(stat -c%s dist/SICAPDA.apk)"
+
+          # minSdk real do APK compilado (a página mostra "Android X ou superior")
+          AAPT2="$(ls -d "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1 || true)"
+          MIN_SDK=""
+          if [ -n "$AAPT2" ]; then
+            # (o "badging" do aapt2 não imprime o minSdk; o xmltree do manifesto imprime, às vezes em hexadecimal)
+            MIN_SDK="$("$AAPT2" dump xmltree --file AndroidManifest.xml dist/SICAPDA.apk 2>/dev/null \
+              | sed -n 's/.*minSdkVersion[^=]*=\(([^)]*)\)\{0,1\}\(0x[0-9a-fA-F]*\|[0-9][0-9]*\).*/\2/p' | head -1 || true)"
+            case "$MIN_SDK" in 0x*) MIN_SDK="$((MIN_SDK))" ;; esac
+            echo "minSdk detectado: '${MIN_SDK}'"
+          fi
+
+          jq -n \
+            --arg arquivo "SICAPDA.apk" --arg versao "$VERSAO" --argjson build "$BUILD" \
+            --argjson tamanho "$TAMANHO" --arg sha256 "$SHA256" \
+            --arg min_sdk "$MIN_SDK" --arg atualizado_em "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{arquivo:$arquivo, versao:$versao, build:$build, tamanho:$tamanho, sha256:$sha256,
+              min_sdk:(if $min_sdk == "" then null else ($min_sdk|tonumber) end), atualizado_em:$atualizado_em}' \
+            > dist/app.json
+          cat dist/app.json
+
+      # Confere o APK como ele sairá: se algo importante estiver errado, o job falha aqui (e não no celular de alguém).
+      - name: Conferir o APK (pacote, permissão, nome, arquiteturas e assinatura)
+        run: |
+          set -euo pipefail
+          BT="$(ls -d "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"/build-tools/* | sort -V | tail -1)"
+          APK=dist/SICAPDA.apk
+          "$BT/aapt2" dump badging "$APK" > badging.txt
+          grep -E "^(package|sdkVersion|targetSdkVersion|application-label:|launchable-activity|native-code|uses-permission)" badging.txt
+
+          falhou=0
+          confere() { if grep -q "$1" badging.txt; then echo "OK   $2"; else echo "::error::FALHOU: $2"; falhou=1; fi; }
+          confere "package: name='br.com.fluxeteam.sicapda'" "identificador do app (br.com.fluxeteam.sicapda)"
+          confere "uses-permission: name='android.permission.INTERNET'" "permissão de INTERNET no APK de release"
+          confere "application-label:'SICAPDA'" "nome do app (SICAPDA)"
+          confere "launchable-activity: name='br.com.fluxeteam.sicapda.MainActivity'" "tela inicial (MainActivity)"
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            confere "native-code:.*'$abi'" "arquitetura $abi"
+          done
+          unzip -l "$APK" > conteudo-apk.txt
+          grep -E "res/mipmap.*ic_launcher|res/xml/network_security_config" conteudo-apk.txt || true
+          # "tee" (e não "head") para o apksigner nunca tomar SIGPIPE; se a assinatura for inválida ele sai com erro e o job falha
+          "$BT/apksigner" verify --verbose --print-certs "$APK" | tee apksigner.txt
+          [ "$falhou" -eq 0 ]
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SICAPDA-apk
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  # ------------------------------------------------------------------------------------------------
+  web:
+    name: Web (compilar a versão para o navegador)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Dependências
+        run: flutter pub get
+
+      # --base-href /aplicativo/        : o SystemFluxe publica o app nessa pasta (public/aplicativo)
+      # --no-web-resources-cdn          : leva o motor gráfico (CanvasKit) junto, em vez de buscar no Google; sem isso o
+      #                                   app não abre em redes que bloqueiam o gstatic.com
+      # --pwa-strategy=none             : sem o service worker do Flutter (obsoleto); o web/sw.js do projeto cuida da instalação
+      - name: Compilar para a web (release)
+        run: flutter build web --release --base-href /aplicativo/ --no-web-resources-cdn --pwa-strategy=none
+
+      # Tira o que o navegador nunca baixa nessa configuração (de ~43 MB para ~19 MB).
+      - name: Enxugar o motor gráfico e gerar o SICAPDA-web.zip
+        run: |
+          set -euo pipefail
+          cd build/web
+          rm -f flutter_service_worker.js
+          rm -rf canvaskit/webparagraph canvaskit/skwasm* canvaskit/wimp*
+          find canvaskit -name '*.symbols' -delete
+          du -sh . ; find canvaskit -type f | sort
+          mkdir -p ../../dist
+          zip -qr ../../dist/SICAPDA-web.zip .
+          ls -la ../../dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SICAPDA-web
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  # ------------------------------------------------------------------------------------------------
+  # Abre um emulador Android de verdade, instala o APK de release e usa o app. Não bloqueia a publicação
+  # (emuladores em servidores compartilhados às vezes falham por motivos alheios ao app), mas o resultado
+  # fica no resumo da execução, com capturas de tela.
+  smoke-android:
+    name: Android (testar o APK no emulador)
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: python -m pip install pillow
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: SICAPDA-apk
+          path: apk
+
+      - name: Liberar o KVM (aceleração do emulador)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Imagens de sistema do Android disponíveis (só para consulta)
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --list 2>/dev/null | grep -E 'system-images;android-3[3-5];' | sed 's/ *|.*//' | sort -u || true
+          nproc; free -m | head -2
+
+      - name: Emulador Android 14 + teste do app
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          cores: 4
+          ram-size: 4096M
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash tool/ci/android_smoke.sh apk/SICAPDA.apk smoke
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SICAPDA-android-smoke
+          path: smoke/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ------------------------------------------------------------------------------------------------
+  windows:
+    name: Windows (compilar e gerar o instalador)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Dependências
+        run: flutter pub get
+
+      - name: Compilar para Windows (release)
+        run: flutter build windows --release
+
+      # O Inno Setup costuma vir na imagem do GitHub; se não vier, instala (com repetição, o Chocolatey às vezes falha).
+      - name: Garantir o Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (Test-Path $iscc) { Write-Host "Inno Setup já instalado."; exit 0 }
+          foreach ($tentativa in 1..3) {
+            choco install innosetup -y --no-progress
+            if (Test-Path $iscc) { exit 0 }
+            Start-Sleep -Seconds (10 * $tentativa)
+          }
+          throw "Não foi possível instalar o Inno Setup."
+
+      - name: Gerar o instalador (SICAPDA-Setup.exe + app-windows.json)
+        shell: pwsh
+        run: ./tool/empacotar_windows.ps1 -Saida dist
+
+      # Teste de fumaça: instala em silêncio, abre o app e confere que ele continua rodando (se faltasse alguma
+      # DLL, o Windows fecharia o programa na hora). Depois desinstala.
+      - name: Testar o instalador (instalar, abrir e desinstalar)
+        shell: pwsh
+        run: |
+          $pasta = Join-Path $env:RUNNER_TEMP 'sicapda-instalado'
+          $inst = Start-Process -FilePath (Resolve-Path dist/SICAPDA-Setup.exe).Path -PassThru -Wait `
+            -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=$pasta"
+          if ($inst.ExitCode -ne 0) { throw "O instalador terminou com código $($inst.ExitCode)" }
+
+          $exe = Join-Path $pasta 'SICAPDA.exe'
+          if (-not (Test-Path $exe)) { throw 'SICAPDA.exe não foi instalado.' }
+          Get-ChildItem $pasta | Select-Object Name, Length | Format-Table -AutoSize | Out-String | Write-Host
+
+          $app = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 12
+          if ($app.HasExited) { throw "O aplicativo fechou sozinho (código $($app.ExitCode))." }
+          Write-Host "O aplicativo abriu e continua rodando (PID $($app.Id), janela: '$($app.MainWindowTitle)')."
+
+          # captura da tela com o app aberto (vira artefato para conferir a aparência no Windows de verdade)
+          try {
+            Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+            $tela = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $img = New-Object System.Drawing.Bitmap $tela.Width, $tela.Height
+            $g = [System.Drawing.Graphics]::FromImage($img)
+            $g.CopyFromScreen($tela.Location, [System.Drawing.Point]::Empty, $tela.Size)
+            $g.Dispose()
+            New-Item -ItemType Directory -Force captura | Out-Null
+            $img.Save((Join-Path (Resolve-Path captura).Path 'SICAPDA-no-windows.png'), [System.Drawing.Imaging.ImageFormat]::Png)
+            Write-Host "Captura salva ($($tela.Width)x$($tela.Height))."
+          } catch { Write-Host "Não foi possível capturar a tela: $($_.Exception.Message)" }
+
+          Stop-Process -Id $app.Id -Force
+          Start-Sleep -Seconds 2
+          $un = Join-Path $pasta 'unins000.exe'
+          if (Test-Path $un) { Start-Process -FilePath $un -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait }
+          Write-Host 'Instalação, abertura e desinstalação funcionaram.'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SICAPDA-windows
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SICAPDA-windows-captura
+          path: captura/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ------------------------------------------------------------------------------------------------
+  pacote:
+    name: Reunir os arquivos para o site
+    needs: [android, web, windows, smoke-android]
+    # Se o Windows ou o emulador falharem, ainda entrega o APK e a web (o job que falhou fica vermelho para alguém olhar).
+    if: ${{ !cancelled() && needs.android.result == 'success' && needs.web.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SICAPDA-apk
+          path: SICAPDA-downloads
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: SICAPDA-web
+          path: SICAPDA-downloads
+
+      - uses: actions/download-artifact@v4
+        if: ${{ needs.windows.result == 'success' }}
+        with:
+          name: SICAPDA-windows
+          path: SICAPDA-downloads
+
+      - name: Conferir o pacote
+        run: |
+          ls -la SICAPDA-downloads
+          for f in SICAPDA-downloads/*.json; do echo "== $f"; cat "$f"; echo; done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SICAPDA-downloads
+          path: SICAPDA-downloads/
+          if-no-files-found: error
+          retention-days: 90
+
+      # As capturas de tela do emulador acompanham a Release (para conferir como o app ficou no Android de verdade)
+      - uses: actions/download-artifact@v4
+        if: ${{ needs.smoke-android.result != 'skipped' }}
+        continue-on-error: true
+        with:
+          name: SICAPDA-android-smoke
+          path: smoke
+
+      - name: Guardar capturas para a publicação
+        run: |
+          mkdir -p extras
+          if [ -d smoke ]; then
+            for f in smoke/*.png smoke/resumo*.txt smoke/mock.log; do
+              [ -f "$f" ] && cp "$f" "extras/emulador-$(basename "$f")"
+            done
+          fi
+          ls -la extras
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SICAPDA-extras
+          path: extras/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  # ------------------------------------------------------------------------------------------------
+  # Release oficial: push na main ou tag v*. Cria "v<versão>" com tudo anexado. Se a versão do pubspec.yaml
+  # já tem Release, NÃO sobrescreve (mudar o APK de uma versão já publicada confunde quem já baixou):
+  # aumente o "version:" para publicar de novo.
+  publicar:
+    name: Publicar a Release
+    needs: [pacote]
+    if: ${{ !cancelled() && needs.pacote.result == 'success' && github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SICAPDA-downloads
+          path: dist
+
+      - name: Criar a Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ls -la dist
+          VERSAO="$(jq -r .versao dist/app.json)"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then TAG="$GITHUB_REF_NAME"; else TAG="v$VERSAO"; fi
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::notice::A Release $TAG já existe e não foi alterada. Para publicar de novo, aumente o version: do pubspec.yaml."
+            exit 0
+          fi
+          gh release create "$TAG" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "SICAPDA $VERSAO" \
+            --generate-notes
+          echo "Release publicada: https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # Prévia: branch claude/** ou execução manual. Uma única Release "ci-preview", sempre substituída pela
+  # mais recente e marcada como pré-lançamento (nunca é a "mais recente" do repositório).
+  previa:
+    name: Atualizar a Release de prévia
+    needs: [pacote]
+    if: ${{ !cancelled() && needs.pacote.result == 'success' && (startsWith(github.ref, 'refs/heads/claude/') || github.event_name == 'workflow_dispatch') && github.ref != 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: SICAPDA-downloads
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: SICAPDA-extras
+          path: dist
+
+      - name: Publicar a prévia
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ls -la dist
+          gh release delete ci-preview --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+          gh release create ci-preview dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "Prévia de teste (não é uma versão oficial)" \
+            --notes "Gerada automaticamente pelo CI a partir de \`${GITHUB_REF_NAME}\` (${GITHUB_SHA::7}). Serve para testar antes de mesclar; a versão oficial é a Release mais recente."
+          echo "Prévia: https://github.com/$GITHUB_REPOSITORY/releases/tag/ci-preview" | tee -a "$GITHUB_STEP_SUMMARY"

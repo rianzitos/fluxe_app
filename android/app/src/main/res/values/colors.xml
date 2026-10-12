@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#171717</color>
+    <!-- Fundo da tela de abertura (mesmo preto do login do app) -->
+    <color name="launch_background">#0D0D0D</color>
+</resources>

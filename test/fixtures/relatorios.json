@@ -1,0 +1,242 @@
+{
+    "sucesso": true,
+    "filtros": {
+        "de": "2026-10-01",
+        "ate": "2026-10-06",
+        "busca": "",
+        "categoria": "",
+        "pagina": 1
+    },
+    "total": 61,
+    "pagina": 1,
+    "paginas": 4,
+    "porPagina": 20,
+    "cards": {
+        "total": 61,
+        "hoje": 19,
+        "duracao": "6h 42min",
+        "pico": "12:00 - 13:00"
+    },
+    "registros": [
+        {
+            "id": 8,
+            "nome": "Pessoa 8",
+            "cargo": "Cargo 8",
+            "categoria": "supervisor",
+            "categoriaRotulo": "Supervisor",
+            "dia": "2026-10-06",
+            "entrada": "07:41",
+            "saida": "13:20",
+            "duracao": "5h 39min"
+        },
+        {
+            "id": 6,
+            "nome": "Pessoa 6",
+            "cargo": "Cargo 6",
+            "categoria": "operador",
+            "categoriaRotulo": "Operador",
+            "dia": "2026-10-06",
+            "entrada": "08:33",
+            "saida": "15:08",
+            "duracao": "6h 35min"
+        },
+        {
+            "id": 15,
+            "nome": "Pessoa 15",
+            "cargo": "Cargo 15",
+            "categoria": "operador",
+            "categoriaRotulo": "Operador",
+            "dia": "2026-10-06",
+            "entrada": "08:54",
+            "saida": "16:02",
+            "duracao": "7h 08min"
+        },
+        {
+            "id": 20,
+            "nome": "Pessoa 20",
+            "cargo": "Cargo 20",
+            "categoria": "operador",
+            "categoriaRotulo": "Operador",
+            "dia": "2026-10-06",
+            "entrada": "09:01",
+            "saida": "14:41",
+            "duracao": "5h 40min"
+        },
+        {
+            "id": 7,
+            "nome": "Pessoa 7",
+            "cargo": "Cargo 7",
+            "categoria": "operador",
+            "categoriaRotulo": "Operador",
+            "dia": "2026-10-06",
+            "entrada": "09:08",
+            "saida": "16:54",
+            "duracao": "7h 46min"
+        },
+        {
+            "id": 14,
+            "nome": "Pessoa 14",
+            "cargo": "Cargo 14",
+            "categoria": "prestador",
+            "categoriaRotulo": "Prestador de Serviço",
+            "dia": "2026-10-06",
+            "entrada": "10:52",
+            "saida": "16:58",
+            "duracao": "6h 06min"
+        },
+        {
+            "id": 3,
+            "nome": "Pessoa 3",
+            "cargo": "Cargo 3",
+            "categoria": "supervisor",
+            "categoriaRotulo": "Supervisor",
+            "dia": "2026-10-06",
+            "entrada": "10:58",
+            "saida": "18:44",
+            "duracao": "7h 46min"
+        },
+        {
+            "id": 19,
+            "nome": "Pessoa 19",
+            "cargo": "Cargo 19",
+            "categoria": "prestador",
+            "categoriaRotulo": "Prestador de Serviço",
+            "dia": "2026-10-06",
+            "entrada": "11:36",
+            "saida": "19:51",
+            "duracao": "8h 15min"
+        },
+        {
+            "id": 1,
+            "nome": "Pessoa 1",
+            "cargo": "Cargo 1",
+            "categoria": "operador",
+            "categoriaRotulo": "Operador",
+            "dia": "2026-10-06",
+            "entrada": "12:17",
+            "saida": "18:05",
+            "duracao": "5h 48min"
+        },
+        {
+            "id": 12,
+            "nome": "Pessoa 12",
+            "cargo": "Cargo 12",
+            "categoria": "operador",
+            "categoriaRotulo": "Operador",
+            "dia": "2026-10-06",
+            "entrada": "12:23",
+            "saida": "19:47",
+            "duracao": "7h 24min"
+        },
+        {
+            "id": 17,
+            "nome": "Pessoa 17",
+            "cargo": "Cargo 17",
+            "categoria": "operador",
+            "categoriaRotulo": "Operador",
+            "dia": "2026-10-06",
+            "entrada": "12:24",
+            "saida": "18:21",
+            "duracao": "5h 57min"
+        },
+        {
+            "id": 2,
+            "nome": "Pessoa 2",
+            "cargo": "Cargo 2",
+            "categoria": "operador",
+            "categoriaRotulo": "Operador",
+            "dia": "2026-10-06",
+            "entrada": "12:41",
+            "saida": "18:37",
+            "duracao": "5h 56min"
+        },
+        {
+            "id": 10,
+            "nome": "Pessoa 10",
+            "cargo": "Cargo 10",
+            "categoria": "operador",
+            "categoriaRotulo": "Operador",
+            "dia": "2026-10-06",
+            "entrada": "12:45",
+            "saida": "17:54",
+            "duracao": "5h 09min"
+        },
+        {
+            "id": 13,
+            "nome": "Pessoa 13",
+            "cargo": "Cargo 13",
+            "categoria": "supervisor",
+            "categoriaRotulo": "Supervisor",
+            "dia": "2026-10-06",
+            "entrada": "12:52",
+            "saida": "18:09",
+            "duracao": "5h 17min"
+        },
+        {
+            "id": 16,
+            "nome": "Pessoa 16",
+            "cargo": "Cargo 16",
+            "categoria": "operador",
+            "categoriaRotulo": "Operador",
+            "dia": "2026-10-06",
+            "entrada": "13:09",
+            "saida": "19:24",
+            "duracao": "6h 15min"
+        },
+        {
+            "id": 9,
+            "nome": "Pessoa 9",
+            "cargo": "Cargo 9",
+            "categoria": "prestador",
+            "categoriaRotulo": "Prestador de Serviço",
+            "dia": "2026-10-06",
+            "entrada": "13:09",
+            "saida": "21:03",
+            "duracao": "7h 54min"
+        },
+        {
+            "id": 4,
+            "nome": "Pessoa 4",
+            "cargo": "Cargo 4",
+            "categoria": "prestador",
+            "categoriaRotulo": "Prestador de Serviço",
+            "dia": "2026-10-06",
+            "entrada": "13:10",
+            "saida": "19:16",
+            "duracao": "6h 06min"
+        },
+        {
+            "id": 18,
+            "nome": "Pessoa 18",
+            "cargo": "Cargo 18",
+            "categoria": "supervisor",
+            "categoriaRotulo": "Supervisor",
+            "dia": "2026-10-06",
+            "entrada": "13:16",
+            "saida": "20:05",
+            "duracao": "6h 49min"
+        },
+        {
+            "id": 5,
+            "nome": "Pessoa 5",
+            "cargo": "Cargo 5",
+            "categoria": "operador",
+            "categoriaRotulo": "Operador",
+            "dia": "2026-10-06",
+            "entrada": "13:18",
+            "saida": "20:14",
+            "duracao": "6h 56min"
+        },
+        {
+            "id": 12,
+            "nome": "Pessoa 12",
+            "cargo": "Cargo 12",
+            "categoria": "operador",
+            "categoriaRotulo": "Operador",
+            "dia": "2026-10-05",
+            "entrada": "07:20",
+            "saida": "15:07",
+            "duracao": "7h 47min"
+        }
+    ]
+}
