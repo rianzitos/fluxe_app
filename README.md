@@ -6,11 +6,11 @@
 
 # SICAPDA App · fluxe_app
 
-Aplicativo do **SICAPDA** para **Windows e Android** — *Sistema Inteligente de Controle de Acesso e Previsão de Demanda Alimentar*, desenvolvido pela **Fluxe**.
+Aplicativo do **SICAPDA** para **Android, Windows e navegador** — *Sistema Inteligente de Controle de Acesso e Previsão de Demanda Alimentar*, desenvolvido pela **Fluxe**.
 
-Feito em **Flutter (Dart)**, ele traz para o computador e para o celular as mesmas telas e funcionalidades da versão web ([SystemFluxe](https://github.com/rianzitos/SystemFluxe)), lendo o **mesmo banco de dados MySQL**: o que muda na web aparece no app, e vice-versa.
+Feito em **Flutter (Dart)**, ele traz para o celular, o computador e o navegador as mesmas telas e funcionalidades da versão web ([SystemFluxe](https://github.com/rianzitos/SystemFluxe)), lendo o **mesmo banco de dados MySQL**: o que muda na web aparece no app, e vice-versa.
 
-📲 **Quer instalar?** Baixe o aplicativo para Windows ou Android em [fluxeteam.com.br/sicapda#baixar](https://fluxeteam.com.br/sicapda#baixar) (ou veja [como gerar e publicar o aplicativo](#gerar-e-publicar-o-aplicativo)).
+📲 **Quer usar?** Na página [fluxeteam.com.br/sicapda#baixar](https://fluxeteam.com.br/sicapda#baixar) você baixa o aplicativo para **Android** (`.apk`) ou **Windows**, ou toca em **Abrir no navegador** (a [versão web](#versão-web), que funciona em qualquer aparelho, inclusive iPhone, e instala na tela inicial). Para gerar e publicar, veja [Gerar e publicar o aplicativo](#gerar-e-publicar-o-aplicativo).
 
 ---
 
@@ -92,6 +92,7 @@ Outros detalhes: menu lateral escuro igual ao da web (no computador ele fica sem
 flutter pub get
 flutter run                # no celular/emulador conectado
 flutter run -d windows     # no seu computador com Windows
+flutter run -d chrome      # no navegador (a API do SystemFluxe responde CORS, então funciona apontando para qualquer servidor)
 ```
 
 ### 3. Apontar o app para o servidor
@@ -100,47 +101,70 @@ Na tela de login, toque em **Servidor** e informe o endereço do SystemFluxe. De
 
 | Onde o SystemFluxe está | Endereço |
 |---|---|
-| Produção | `https://fluxeteam.com.br` (padrão do app) |
+| Produção | `https://fluxeteam.com.br` (padrão do app; na versão web publicada, o padrão é o próprio site de onde a página foi aberta) |
 | Emulador Android → seu PC | `http://10.0.2.2:8000` |
 | Celular físico na mesma rede Wi-Fi | `http://IP-DO-SEU-PC:8000` (ex.: `http://192.168.0.10:8000`) |
 | App do Windows no mesmo PC do servidor | `http://localhost:8000` |
 
-> O tráfego `http://` (sem SSL) só é permitido em builds de **debug**. Em produção use sempre `https://`.
+> **HTTP só para testes:** o APK aceita `http://` para você testar contra um servidor na sua rede (a tela de login avisa que o endereço não é criptografado), mas o servidor de produção `fluxeteam.com.br` é **sempre HTTPS** (regra em `android/app/src/main/res/xml/network_security_config.xml`). Em produção use sempre `https://`.
 
 ---
 
 ## Gerar e publicar o aplicativo
 
-Os instaladores são oferecidos na página de apresentação do sistema, na seção **Baixar** (`/sicapda#baixar`, atalho `/app`). É um botão só: ele entrega o instalador certo para o aparelho de quem acessa, **Windows** (`SICAPDA-Setup.exe`) ou **Android** (`SICAPDA.apk`). Para gerar os dois **não precisa de Android Studio nem de Visual Studio**: o GitHub compila para você.
+Os três jeitos de usar o app são oferecidos na página de apresentação do sistema, na seção **Baixar** (`/sicapda#baixar`, atalho `/app`): **Android** (`SICAPDA.apk`), **Windows** (`SICAPDA-Setup.exe`) e **Abrir no navegador** (a versão web). O botão principal entrega o instalador certo para o aparelho de quem acessa. Para gerar tudo **não precisa de Android Studio nem de Visual Studio**: o GitHub compila para você.
 
 ### Opção 1 — pelo GitHub (recomendado)
 
-O workflow [`Build do aplicativo`](.github/workflows/build-app.yml) analisa, testa e compila o app (Android e Windows, em paralelo) a cada Pull Request, a cada push na `main`, a cada tag `v*` e também sob demanda (**Actions → Build do aplicativo → Run workflow**).
+O workflow [`Build do aplicativo`](.github/workflows/build-app.yml) analisa, testa e compila o app (Android, web e Windows, em paralelo), **abre um emulador Android para testar o APK de verdade** (instala, abre, entra no app contra um servidor de mentira e reabre para conferir que a sessão foi salva) e publica os arquivos:
 
-1. No GitHub, abra **Actions → Build do aplicativo** e entre na execução mais recente.
-2. Em **Artifacts**, baixe `SICAPDA-downloads`: um `.zip` com quatro arquivos, `SICAPDA-Setup.exe` + `app-windows.json` (Windows) e `SICAPDA.apk` + `app.json` (Android). Os `.json` guardam versão, tamanho, SHA-256 e data.
-3. Copie os arquivos para a pasta `storage/downloads/` do **SystemFluxe**, no servidor. Pronto: a página passa a mostrar versão, tamanho e data, e o botão de download funciona. Se publicar só um dos sistemas, a página avisa que o outro ainda não foi publicado.
+| Quando roda | O que acontece |
+|---|---|
+| Pull Request | Analisa, testa e compila. Os arquivos ficam em **Actions → execução → Artifacts**. |
+| Push na `main` (ou tag `v*`) | Publica a **Release** `v<versão do pubspec.yaml>` com todos os arquivos anexados. Essa é a versão oficial. Se a Release da versão já existe, **não** é sobrescrita: aumente o `version:` para publicar de novo. |
+| Push num branch `claude/**` ou **Run workflow** manual | Atualiza a Release **"Prévia de teste"** (`ci-preview`, marcada como pré-lançamento), para baixar e testar antes de mesclar. |
 
-Para publicar uma versão "oficial", aumente o `version:` do `pubspec.yaml` (ex.: `1.0.1+2`), faça o merge e crie uma tag. A **Release** do GitHub sai com todos os arquivos anexados:
+Arquivos de cada Release: `SICAPDA.apk` + `app.json` (Android), `SICAPDA-Setup.exe` + `app-windows.json` (Windows) e `SICAPDA-web.zip` (versão web). Os `.json` guardam versão, tamanho, SHA-256 e data.
 
-```bash
-git tag v1.0.1
-git push origin v1.0.1
-```
+**Para publicar uma versão:**
+
+1. Aumente o `version:` do `pubspec.yaml` (ex.: `1.1.1+3`) e faça o merge na `main`. Em poucos minutos a Release `v1.1.1` aparece em **github.com/rianzitos/fluxe_app/releases**.
+2. Baixe os arquivos da Release e copie para o **SystemFluxe**: `SICAPDA.apk` + `app.json` e `SICAPDA-Setup.exe` + `app-windows.json` em `storage/downloads/`; e o conteúdo de `SICAPDA-web.zip` em `public/aplicativo/` (mantendo o `.htaccess` que está lá). Pronto: a página passa a mostrar versão, tamanho e data, e os botões funcionam.
+
+Também dá para criar a Release manualmente com uma tag: `git tag v1.1.1 && git push origin v1.1.1`.
 
 ### Opção 2 — no seu computador (Windows)
 
 ```powershell
-.\tool\publicar_app.ps1                                    # Android e Windows → ..\SystemFluxe\storage\downloads
-.\tool\publicar_app.ps1 -Plataforma Windows                # só o instalador do Windows (ou -Plataforma Android)
+.\tool\publicar_app.ps1                                    # Android, Windows e web → ..\SystemFluxe
+.\tool\publicar_app.ps1 -Plataforma Web                    # só a versão web (ou -Plataforma Android / Windows)
 .\tool\publicar_app.ps1 -Destino C:\Projetos\SystemFluxe   # SystemFluxe em outro lugar
 .\tool\publicar_app.ps1 -Servidor https://fluxeteam.com.br # servidor padrão embutido no app
 .\tool\publicar_app.ps1 -SemBuild                          # só publica o que já foi compilado
 ```
 
-Para o instalador do Windows é preciso ter o [Inno Setup 6](https://jrsoftware.org/isdl.php) (`winget install JRSoftware.InnoSetup`). Passo a passo manual: `flutter build windows --release` e depois `.\tool\empacotar_windows.ps1`, que gera `dist\SICAPDA-Setup.exe`. No Android: `flutter build apk --release --target-platform android-arm,android-arm64` (arquivo em `build/app/outputs/flutter-apk/app-release.apk`).
+O script copia os instaladores para `storage\downloads` e a versão web para `public\aplicativo` do SystemFluxe. Para o instalador do Windows é preciso ter o [Inno Setup 6](https://jrsoftware.org/isdl.php) (`winget install JRSoftware.InnoSetup`). Passo a passo manual: `flutter build windows --release` e depois `.\tool\empacotar_windows.ps1`, que gera `dist\SICAPDA-Setup.exe`. No Android: `flutter build apk --release --target-platform android-arm,android-arm64,android-x64` (arquivo em `build/app/outputs/flutter-apk/app-release.apk`).
 
-> O APK inclui só as arquiteturas **ARM**, que cobrem todos os celulares e tablets Android e deixam o arquivo bem menor (cerca de 37 MB). Emuladores de PC (x86_64) não rodam esse APK; no emulador use `flutter run`.
+> O APK é **único para todos os aparelhos**: inclui ARM de 32 e 64 bits (todos os celulares e tablets) e **x86_64** (emulador do Android Studio, Chromebooks, BlueStacks). Por isso tem cerca de 50 MB. Antes o APK só tinha ARM e dava erro de arquitetura ao instalar no emulador.
+
+### Versão web
+
+O mesmo app, compilado para o navegador. O SystemFluxe a serve como arquivos estáticos em **`/aplicativo/`** (pasta `public/aplicativo/`), na mesma origem da API, então não precisa configurar CORS nem endereço de servidor: **o app usa o próprio site de onde foi aberto**.
+
+```bash
+flutter build web --release --base-href /aplicativo/ --no-web-resources-cdn --pwa-strategy=none
+```
+
+- `--base-href /aplicativo/`: a pasta onde o SystemFluxe publica o app.
+- `--no-web-resources-cdn`: leva o motor gráfico (CanvasKit) junto. Sem isso o navegador o baixa do `gstatic.com` do Google e, em redes que bloqueiam esse endereço (escolas, empresas), o app fica em branco para sempre.
+- `--pwa-strategy=none`: sem o service worker obsoleto do Flutter. O `web/sw.js` do projeto é mínimo (não guarda nada em cache) e existe só para o navegador oferecer **Instalar aplicativo**.
+
+Depois do build, o `publicar_app.ps1` e o CI tiram os renderizadores que o navegador não usa (`canvaskit/skwasm*`, `wimp*`, `webparagraph` e os `.symbols`), de ~43 MB para ~19 MB, e o `SICAPDA-web.zip` já sai assim.
+
+- **Instalar na tela inicial:** Android (Chrome) → menu ⋮ → *Instalar aplicativo*; iPhone/iPad (Safari) → Compartilhar → *Adicionar à Tela de Início*; computador (Chrome/Edge) → ícone de instalar na barra de endereço.
+- **Sessão:** no navegador o token fica no armazenamento do próprio navegador (o "cofre" da web exige HTTPS e falha em `http://`, por exemplo numa demonstração na rede local).
+- **Ícones e logo:** o `web/` tem favicon, ícones do PWA (inclusive o "maskable" do Android e o `apple-touch-icon` do iPhone) e a tela de carregamento com a logo do SICAPDA. Para regenerar a partir da arte de `assets/icon/` e `assets/logo/`: `pip install pillow` e `python tool/gerar_icones_web.py`.
+- **Servidor:** o `.htaccess` de `public/aplicativo/` (no SystemFluxe) comprime o motor gráfico (7 MB → 2 MB), define `application/wasm` e usa `Cache-Control: no-cache`, para uma versão nova aparecer sozinha.
 
 ### Instalador do Windows
 
@@ -171,10 +195,10 @@ keytool -genkeypair -v -keystore sicapda-release.jks -alias sicapda -keyalg RSA 
 ### Outros detalhes
 
 - **Servidor padrão:** `https://fluxeteam.com.br`. Para outro endereço na compilação: `flutter build apk --release --dart-define=SICAPDA_SERVER_URL=https://seu-servidor`. O usuário também pode trocar em **Servidor** na tela de login.
-- **Só HTTPS no Android:** o APK de release bloqueia `http://`; o tráfego sem SSL só funciona em builds de debug (`flutter run`). No Windows o `http://` funciona (útil para testar com um servidor local).
-- **Permissões (Android):** apenas `INTERNET`.
-- **Identificador do app:** hoje é `com.example.fluxe_app` (padrão do Flutter). Se um dia for publicar na Play Store, troque por um identificador próprio **antes** da primeira publicação; depois não dá para mudar.
-- **Ícone, logo e nome:** o app aparece como **SICAPDA** no celular e no Windows. A arte do ícone fica em `assets/icon/` (para regenerar os ícones do Android: `dart run flutter_launcher_icons`; o `.ico` do Windows fica em `windows/runner/resources/`) e a logo oficial usada nas telas em `assets/logo/`.
+- **HTTP só para testes:** no Android e no Windows o app aceita `http://` (servidor na sua rede local), mas a produção (`fluxeteam.com.br`) é sempre HTTPS. No navegador valem as regras do próprio navegador (uma página `https://` não consegue chamar um servidor `http://`).
+- **Permissões (Android):** apenas `INTERNET`. O app não faz backup do token na nuvem (`allowBackup=false`).
+- **Identificador do app:** `br.com.fluxeteam.sicapda` (era `com.example.fluxe_app`, o padrão do Flutter). **Não mude depois de publicar**: é por ele que o Android reconhece que um APK novo é uma atualização. Quem instalou uma versão antiga (`com.example.fluxe_app`) fica com os dois apps lado a lado; basta desinstalar o antigo.
+- **Ícone, logo e nome:** o app aparece como **SICAPDA** no celular, no Windows e no navegador. A arte do ícone fica em `assets/icon/` (para regenerar os ícones do Android: `dart run flutter_launcher_icons`; o `.ico` do Windows fica em `windows/runner/resources/`) e a logo oficial usada nas telas em `assets/logo/`.
 
 ---
 
@@ -209,11 +233,14 @@ lib/
 assets/fonts/                  # Inter e Sora
 assets/icon/                   # Arte do ícone do aplicativo
 assets/logo/                   # Logo oficial do SICAPDA (usada no login, no menu e na abertura)
+web/                           # Versão web: index.html (tela de carregamento com a logo), manifest, ícones do PWA e sw.js
 windows/installer/             # Script do instalador do Windows (Inno Setup) e imagens do assistente
 test/                          # Testes + respostas reais da API em test/fixtures/
 tool/publicar_app.ps1          # Compila (Android e/ou Windows) e publica no storage/downloads do SystemFluxe
 tool/empacotar_windows.ps1     # Gera o SICAPDA-Setup.exe a partir do build do Windows
-.github/workflows/build-app.yml  # CI: analisa, testa e compila Android + Windows (artefato SICAPDA-downloads)
+tool/gerar_icones_web.py       # Gera favicon e ícones do PWA a partir da logo
+tool/ci/                       # Teste do APK no emulador (CI): servidor de mentira e roteiro com adb
+.github/workflows/build-app.yml  # CI: analisa, testa e compila Android + web + Windows, testa o APK no emulador e publica a Release
 ```
 
 ---
@@ -244,7 +271,7 @@ flutter analyze
 flutter test
 ```
 
-Os testes cobrem formatação, cliente HTTP, leitura dos modelos e o fluxo completo do app (login, navegação por todas as telas, logout e tema). Eles usam **respostas reais da API** salvas em `test/fixtures/`, então não precisam de internet nem de servidor.
+Os testes cobrem formatação, cliente HTTP, servidor padrão (celular × web), sessão (inclusive cofre que falha), leitura dos modelos e o fluxo completo do app (login, navegação por todas as telas, logout e tema). Eles usam **respostas reais da API** salvas em `test/fixtures/`, então não precisam de internet nem de servidor.
 
 ---
 
@@ -272,7 +299,10 @@ Os testes cobrem formatação, cliente HTTP, leitura dos modelos e o fluxo compl
 | "App não instalado" / "conflita com um pacote existente" ao atualizar | A versão instalada foi assinada com outra chave (comum com os APKs do GitHub sem a chave própria configurada). Desinstale o SICAPDA e instale de novo; o app só guarda o login. Veja [Assinatura do APK](#assinatura-do-apk-importante-para-atualizações). |
 | O Windows mostra "O Windows protegeu o seu computador" ao abrir o instalador | É o SmartScreen: o instalador ainda não tem assinatura digital paga. Clique em **Mais informações → Executar assim mesmo**. |
 | O Android avisa sobre "fonte desconhecida" ao instalar | Normal para apps instalados fora da Play Store. Permita a instalação para o navegador ou o gerenciador de arquivos nas configurações do celular. |
-| "Não foi possível conectar" só no APK, mas funciona no `flutter run` | O APK de release só aceita `https://`. Use um servidor com SSL ou rode com `flutter run` (debug). |
+| "Não foi possível conectar" só no APK ou só no celular | Veja a linha **"Detalhe técnico"** que o login mostra embaixo da mensagem (ex.: `Failed host lookup` = o celular não achou o endereço; erro de certificado = servidor com HTTPS inválido). Para servidor na sua rede use `http://IP-DO-PC:8000` e confirme que celular e PC estão na mesma rede Wi-Fi. `fluxeteam.com.br` só aceita HTTPS. |
+| Versão web fica só com a logo girando / tela em branco | Conexão lenta (o app tem ~4 MB) ou arquivos incompletos em `public/aplicativo/`. Depois de 45 s a tela oferece "Recarregar". Se o site estiver sob um proxy, confira se `canvaskit/canvaskit.wasm` abre (200) e se o `main.dart.js` foi enviado inteiro. |
+| Versão web: "Não foi possível conectar ao servidor" ao rodar `flutter run -d chrome` | Aponte o app para o servidor em **Servidor** (a API responde CORS). Se o seu servidor ainda não tem a versão atual do SystemFluxe, atualize: sem os cabeçalhos CORS o navegador bloqueia o login. |
+| APK não instala no emulador ("INSTALL_FAILED_NO_MATCHING_ABIS") | Era o APK só ARM das versões antigas; a atual inclui x86_64. Baixe o APK novo. |
 | Painel sem dados ou "Sem movimento previsto" | Ainda não há registros nas catracas ou produção cadastrada, ou está fora do expediente. É o mesmo comportamento da web. |
 | `git pull` reclama de `pubspec.lock`, `linux/`, `macos/`, `windows/` | São arquivos gerados pelo Flutter. Descarte com `git checkout -- pubspec.lock analysis_options.yaml linux macos windows`, faça o pull e rode `flutter pub get`. |
 

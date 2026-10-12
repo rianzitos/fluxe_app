@@ -73,31 +73,39 @@ else
 fi
 
 # ── 3) entrar pelo app ──────────────────────────────────────────────────────────
-# O botão "Entrar" é o ponto de referência: o resto da tela fica a distâncias fixas (em dp) dele.
-if ! read -r X Y < <(python3 tool/ci/detectar_botao.py "$OUT/01-abertura.png"); then
-  erro "não achei o botão Entrar na tela de abertura (o login não apareceu?)"
-  fim
-fi
+# O botão "Entrar" é o ponto de referência: o resto da tela fica a distâncias fixas (em dp) dele. Como o teclado
+# do Android sobe e reorganiza a tela a cada campo tocado, a posição do botão é medida de novo antes de cada toque.
+X=0; Y=0
+achar_entrar() {
+  adb exec-out screencap -p > "$OUT/_atual.png"
+  if read -r nx ny < <(python3 tool/ci/detectar_botao.py "$OUT/_atual.png"); then X=$nx; Y=$ny; return 0; fi
+  return 1
+}
+
+achar_entrar || { erro "não achei o botão Entrar na tela de abertura (o login não apareceu?)"; fim; }
 ok "tela de login na tela (botão Entrar em ${X},${Y})"
 
 toque "$X" $((Y + $(dp 65)));  sleep 2                             # botão "Servidor": abre o campo do endereço
 foto 02-servidor
-read -r X Y < <(python3 tool/ci/detectar_botao.py "$OUT/02-servidor.png") || { erro "não achei o Entrar depois de abrir o Servidor"; fim; }
-toque "$X" $((Y + $(dp 140))); sleep 1                             # campo do endereço do servidor
+achar_entrar || { erro "não achei o Entrar depois de abrir o Servidor"; fim; }
+toque "$X" $((Y + $(dp 140))); sleep 2                             # campo do endereço do servidor (o teclado sobe)
 adb shell input keyevent KEYCODE_MOVE_END
 adb shell input keyevent 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67 67   # apaga o endereço padrão
 adb shell input text 'http://10.0.2.2:8000'                       # 10.0.2.2 = o computador que roda o emulador
-sleep 1
+sleep 1.5
 foto 03-servidor-digitado
 adb shell dumpsys input_method 2>/dev/null | grep -E "mInputShown|mImeWindowVis" | head -2 | tee "$OUT/teclado.txt"
 
-toque "$X" $((Y - $(dp 180))); sleep 1                             # campo e-mail
+achar_entrar || { erro "o botão Entrar sumiu depois de digitar o servidor"; fim; }
+toque "$X" $((Y - $(dp 180))); sleep 2                             # campo e-mail
 adb shell input text 'teste@fluxe.com'
-toque "$X" $((Y - $(dp 80)));  sleep 1                             # campo senha
-adb shell input text 'senha1234'
 sleep 1
+achar_entrar || { erro "o botão Entrar sumiu depois de digitar o e-mail"; fim; }
+toque "$X" $((Y - $(dp 80)));  sleep 2                             # campo senha
+adb shell input text 'senha1234'
+sleep 1.5
 foto 04-formulario
-adb shell input keyevent 66                                        # ENTER no campo senha envia o formulário
+if achar_entrar; then toque "$X" "$Y"; else adb shell input keyevent 66; fi   # botão Entrar (ou ENTER no campo senha)
 sleep 10
 foto 05-depois-do-login
 

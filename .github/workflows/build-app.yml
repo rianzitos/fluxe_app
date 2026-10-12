@@ -125,7 +125,10 @@ jobs:
           AAPT2="$(ls -d "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1 || true)"
           MIN_SDK=""
           if [ -n "$AAPT2" ]; then
-            MIN_SDK="$("$AAPT2" dump badging dist/SICAPDA.apk 2>/dev/null | sed -n "s/^sdkVersion:'\([0-9]*\)'.*/\1/p" | head -1 || true)"
+            # (o "badging" do aapt2 não imprime o minSdk; o xmltree do manifesto imprime, às vezes em hexadecimal)
+            MIN_SDK="$("$AAPT2" dump xmltree --file AndroidManifest.xml dist/SICAPDA.apk 2>/dev/null \
+              | sed -n 's/.*minSdkVersion[^=]*=\(([^)]*)\)\{0,1\}\(0x[0-9a-fA-F]*\|[0-9][0-9]*\).*/\2/p' | head -1 || true)"
+            case "$MIN_SDK" in 0x*) MIN_SDK="$((MIN_SDK))" ;; esac
             echo "minSdk detectado: '${MIN_SDK}'"
           fi
 

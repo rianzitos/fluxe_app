@@ -39,6 +39,15 @@ android {
         versionName = flutter.versionName
     }
 
+    // Bibliotecas nativas (o motor do Flutter, 3 arquiteturas) COMPRIMIDAS dentro do APK: o arquivo para baixar
+    // fica ~40% menor (de ~55 MB para ~35 MB). O Android as extrai na instalação. Para distribuição direta, pelo
+    // site, o tamanho do download pesa mais que os poucos MB a mais que o app ocupa no aparelho.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     signingConfigs {
         if (temChaveDeRelease) {
             create("release") {
