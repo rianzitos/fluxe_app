@@ -3,6 +3,8 @@ import 'package:fluxe_app/main.dart';
 import 'package:fluxe_app/widgets/sicapda_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 import 'helpers.dart';
 
@@ -91,6 +93,40 @@ void main() {
 
     expect(find.text('E-mail ou senha inválidos.'), findsOneWidget);
     expect(c.isLoggedIn, isFalse);
+  });
+
+  testWidgets('sem conexão com o servidor, o login explica e mostra o detalhe técnico', (tester) async {
+    final semRede = MockClient((_) async => throw http.ClientException(
+        "Failed host lookup: 'fluxeteam.com.br'", Uri.parse('https://fluxeteam.com.br/api/login')));
+    final c = await newController(client: semRede);
+    await pumpApp(tester, c);
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'rian@fluxe.com');
+    await tester.enterText(find.byType(TextFormField).at(1), 'senha1234');
+    await tester.tap(find.text('Entrar'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Não foi possível conectar ao servidor'), findsOneWidget);
+    expect(find.byKey(const Key('erro-detalhe')), findsOneWidget);
+    expect(find.textContaining("Failed host lookup: 'fluxeteam.com.br'"), findsOneWidget);
+    expect(c.isLoggedIn, isFalse);
+  });
+
+  testWidgets('servidor com http:// mostra o aviso de conexão sem criptografia', (tester) async {
+    final c = await newController();
+    await pumpApp(tester, c);
+
+    await tester.tap(find.text('Servidor'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('aviso-http')), findsNothing); // padrão: https
+
+    await tester.enterText(find.byType(TextFormField).at(2), 'http://192.168.0.10:8000');
+    await tester.pump();
+    expect(find.byKey(const Key('aviso-http')), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField).at(2), 'https://fluxeteam.com.br');
+    await tester.pump();
+    expect(find.byKey(const Key('aviso-http')), findsNothing);
   });
 
   testWidgets('campos vazios são validados antes de chamar a API', (tester) async {

@@ -2,11 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:fluxe_app/core/api_client.dart';
+import 'package:fluxe_app/core/app_state.dart';
 import 'package:fluxe_app/core/format.dart';
 import 'package:fluxe_app/core/salvar_arquivo.dart';
 import 'package:fluxe_app/models/models.dart';
 import 'package:fluxe_app/widgets/charts.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'helpers.dart';
 
@@ -101,6 +105,91 @@ void main() {
             .having((e) => e.status, 'status', 401)),
       );
     });
+
+    test('falha de conexão vira ApiException com o motivo técnico', () async {
+      final semRede = MockClient((_) async => throw http.ClientException(
+          "Failed host lookup: 'x.test' (OS Error: No address associated with hostname, errno = 7)",
+          Uri.parse('https://x.test/api/login')));
+      final client = ApiClient(baseUrl: 'https://x.test', client: semRede);
+      expect(
+        () => client.post('/login', {'email': 'a@b.c', 'senha': '1'}),
+        throwsA(isA<ApiException>()
+            .having((e) => e.message, 'message', startsWith('Não foi possível conectar ao servidor'))
+            .having((e) => e.detail, 'detail', startsWith("Failed host lookup: 'x.test'"))),
+      );
+    });
+  });
+
+  group('servidor padrão', () {
+    final pagina = Uri.parse('https://sicapda.exemplo.com.br/aplicativo/');
+
+    test('celular e PC usam o servidor de produção', () {
+      expect(resolveDefaultBaseUrl(page: pagina, web: false, release: true), kProductionBaseUrl);
+    });
+
+    test('versão web publicada usa o próprio site de onde a página foi aberta', () {
+      expect(resolveDefaultBaseUrl(page: pagina, web: true, release: true), 'https://sicapda.exemplo.com.br');
+      expect(resolveDefaultBaseUrl(page: Uri.parse('http://192.168.0.10:8000/aplicativo/'), web: true, release: true),
+          'http://192.168.0.10:8000');
+      expect(resolveDefaultBaseUrl(page: Uri.parse('https://x.com.br/aplicativo/index.html?a=1#/x'), web: true, release: true),
+          'https://x.com.br');
+    });
+
+    test('site numa subpasta (XAMPP) mantém a subpasta', () {
+      expect(
+          resolveDefaultBaseUrl(
+              page: Uri.parse('http://localhost/SystemFluxe/public/aplicativo/'), web: true, release: true),
+          'http://localhost/SystemFluxe/public');
+    });
+
+    test('flutter run no navegador (debug) não usa a porta do servidor de desenvolvimento', () {
+      expect(resolveDefaultBaseUrl(page: Uri.parse('http://localhost:5555/'), web: true, release: false),
+          kProductionBaseUrl);
+    });
+
+    test('página que não é http(s) cai no servidor de produção', () {
+      expect(resolveDefaultBaseUrl(page: Uri.parse('file:///C:/app/index.html'), web: true, release: true),
+          kProductionBaseUrl);
+    });
+  });
+
+  group('sessão', () {
+    test('BrowserTokenStore guarda, lê e apaga o token no armazenamento do navegador', () async {
+      SharedPreferences.setMockInitialValues({});
+      final store = BrowserTokenStore();
+      expect(await store.read(), isNull);
+      await store.write('abc.def');
+      expect(await store.read(), 'abc.def');
+      await store.clear();
+      expect(await store.read(), isNull);
+    });
+
+    test('entrar e sair funcionam mesmo se o cofre do aparelho recusar gravar/apagar', () async {
+      SharedPreferences.setMockInitialValues({});
+      final c = AppController(
+        prefs: await SharedPreferences.getInstance(),
+        tokenStore: _CofreQuebrado(),
+        httpClient: fakeApi(),
+      );
+      await c.init();
+      await c.login('rian@fluxe.com', 'senha1234');
+      expect(c.isLoggedIn, isTrue);
+      await c.logout();
+      expect(c.isLoggedIn, isFalse);
+    });
+
+    test('o servidor escolhido pela pessoa vale mais que o padrão', () async {
+      SharedPreferences.setMockInitialValues({'base_url': 'http://10.0.2.2:8000'});
+      final c = AppController(
+        prefs: await SharedPreferences.getInstance(),
+        tokenStore: MemoryTokenStore(),
+        httpClient: fakeApi(),
+        defaultServer: 'https://padrao.exemplo.com.br',
+      );
+      expect(c.baseUrl, 'https://padrao.exemplo.com.br');
+      await c.init();
+      expect(c.baseUrl, 'http://10.0.2.2:8000');
+    });
   });
 
   group('modelos (JSON real da API)', () {
@@ -156,4 +245,16 @@ void main() {
       expect(c.valor, isNull);
     });
   });
+}
+
+/// Cofre que sempre falha (Keystore do Android corrompido, armazenamento do navegador bloqueado...).
+class _CofreQuebrado implements TokenStore {
+  @override
+  Future<String?> read() async => throw StateError('cofre indisponível');
+
+  @override
+  Future<void> write(String token) async => throw StateError('cofre indisponível');
+
+  @override
+  Future<void> clear() async => throw StateError('cofre indisponível');
 }

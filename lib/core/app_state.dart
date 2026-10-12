@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -8,13 +9,36 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import 'api_client.dart';
 
-/// Endereço padrão do SystemFluxe. Pode ser trocado na tela de login
-/// ("Servidor"), por exemplo para http://10.0.2.2:8000 no emulador Android, ou na hora de
-/// compilar: flutter build apk --dart-define=SICAPDA_SERVER_URL=https://meu-servidor.com.br
-const String kDefaultBaseUrl = String.fromEnvironment(
-  'SICAPDA_SERVER_URL',
-  defaultValue: 'https://fluxeteam.com.br',
-);
+/// Servidor de produção do SystemFluxe.
+const String kProductionBaseUrl = 'https://fluxeteam.com.br';
+
+/// Servidor fixado na compilação, se houver:
+///   flutter build apk --dart-define=SICAPDA_SERVER_URL=https://meu-servidor.com.br
+const String _kServerFromBuild = String.fromEnvironment('SICAPDA_SERVER_URL');
+
+/// Pasta (dentro do site) onde o SystemFluxe publica a versão web do aplicativo.
+const String kWebAppFolder = 'aplicativo';
+
+/// Endereço do SystemFluxe usado enquanto a pessoa não escolher outro (tela de login → "Servidor").
+///
+///  • compilado com SICAPDA_SERVER_URL → esse endereço;
+///  • versão web publicada (release) → o próprio site de onde a página foi aberta
+///    (`https://site/aplicativo/` → `https://site`; vale também para uma subpasta, como
+///    `http://localhost/SystemFluxe/public/aplicativo/`). Assim o app web funciona em qualquer
+///    domínio, sem CORS e sem configurar nada;
+///  • celular, PC e `flutter run` → o servidor de produção.
+String resolveDefaultBaseUrl({Uri? page, bool web = kIsWeb, bool release = kReleaseMode}) {
+  if (_kServerFromBuild.isNotEmpty) return _kServerFromBuild;
+  if (web && release) {
+    final uri = page ?? Uri.base;
+    if (uri.scheme == 'http' || uri.scheme == 'https') {
+      final i = uri.path.indexOf('/$kWebAppFolder');
+      final prefix = i > 0 ? uri.path.substring(0, i) : '';
+      return '${uri.origin}$prefix';
+    }
+  }
+  return kProductionBaseUrl;
+}
 
 /// Onde o token de acesso fica guardado (abstraído para facilitar testes).
 abstract class TokenStore {
@@ -23,6 +47,7 @@ abstract class TokenStore {
   Future<void> clear();
 }
 
+/// Celular e PC: cofre do sistema (Keystore do Android, Credential Locker do Windows...).
 class SecureTokenStore implements TokenStore {
   static const _key = 'sicapda_token';
   final _storage = const FlutterSecureStorage();
@@ -35,6 +60,24 @@ class SecureTokenStore implements TokenStore {
 
   @override
   Future<void> clear() => _storage.delete(key: _key);
+}
+
+/// Navegador: não existe cofre. O armazenamento "seguro" da web exige HTTPS e falha em http://
+/// (por exemplo numa demonstração na rede local), então o token fica no armazenamento do próprio
+/// navegador (localStorage), que protege tanto quanto: só este site consegue ler.
+class BrowserTokenStore implements TokenStore {
+  static const _key = 'sicapda_token';
+
+  Future<SharedPreferences> get _prefs => SharedPreferences.getInstance();
+
+  @override
+  Future<String?> read() async => (await _prefs).getString(_key);
+
+  @override
+  Future<void> write(String token) async => (await _prefs).setString(_key, token);
+
+  @override
+  Future<void> clear() async => (await _prefs).remove(_key);
 }
 
 class MemoryTokenStore implements TokenStore {
@@ -52,18 +95,27 @@ class MemoryTokenStore implements TokenStore {
 
 /// Estado global: sessão do usuário, servidor, tema e alertas do sino.
 class AppController extends ChangeNotifier {
-  AppController({SharedPreferences? prefs, TokenStore? tokenStore, http.Client? httpClient})
+  AppController({
+    SharedPreferences? prefs,
+    TokenStore? tokenStore,
+    http.Client? httpClient,
+    String? defaultServer,
+  })
       : _prefsOverride = prefs,
         _httpClient = httpClient ?? http.Client(),
-        _tokens = tokenStore ?? SecureTokenStore();
+        _tokens = tokenStore ?? (kIsWeb ? BrowserTokenStore() : SecureTokenStore()),
+        defaultBaseUrl = defaultServer ?? resolveDefaultBaseUrl();
 
   final SharedPreferences? _prefsOverride;
   final http.Client _httpClient;
   final TokenStore _tokens;
   late SharedPreferences _prefs;
 
+  /// Servidor usado quando a pessoa ainda não escolheu outro.
+  final String defaultBaseUrl;
+
   bool ready = false;
-  String baseUrl = kDefaultBaseUrl;
+  late String baseUrl = defaultBaseUrl;
   String? _token;
   Usuario? user;
   ThemeMode themeMode = ThemeMode.light;
@@ -93,7 +145,7 @@ class AppController extends ChangeNotifier {
   Future<void> init() async {
     _prefs = _prefsOverride ?? await SharedPreferences.getInstance();
 
-    baseUrl = _prefs.getString('base_url') ?? kDefaultBaseUrl;
+    baseUrl = _prefs.getString('base_url') ?? defaultBaseUrl;
     themeMode = _themeFromName(_prefs.getString('tema'));
 
     try {
@@ -133,7 +185,11 @@ class AppController extends ChangeNotifier {
     final res = await client.post('/login', {'email': email.trim(), 'senha': senha});
 
     _token = res['token'] as String;
-    await _tokens.write(_token!);
+    try {
+      await _tokens.write(_token!);
+    } catch (_) {
+      // O cofre do aparelho recusou gravar: a sessão vale até fechar o app, mas o login não falha.
+    }
     await _saveUser(Usuario.fromJson(res['usuario'] as Map<String, dynamic>));
     _api = _buildApi();
     notifyListeners();
@@ -144,7 +200,11 @@ class AppController extends ChangeNotifier {
     user = null;
     alertas = const [];
     _api = _buildApi();
-    await _tokens.clear();
+    try {
+      await _tokens.clear();
+    } catch (_) {
+      // Sair nunca pode falhar por causa do cofre: o token em memória já foi descartado.
+    }
     await _prefs.remove('usuario');
     notifyListeners();
   }

@@ -18,7 +18,7 @@ if (temChaveDeRelease) {
 }
 
 android {
-    namespace = "com.example.fluxe_app"
+    namespace = "br.com.fluxeteam.sicapda"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -28,8 +28,9 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.fluxe_app"
+        // Identificador único do app no Android (domínio da Fluxe ao contrário). Ele NÃO pode mudar depois de
+        // publicado: é por ele que o Android reconhece que um APK novo é atualização do app já instalado.
+        applicationId = "br.com.fluxeteam.sicapda"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

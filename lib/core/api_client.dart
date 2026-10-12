@@ -6,7 +6,11 @@ import 'package:http/http.dart' as http;
 class ApiException implements Exception {
   final String message;
   final int? status;
-  const ApiException(this.message, {this.status});
+
+  /// Motivo técnico (ex.: "Failed host lookup: 'meu-servidor.com.br'"), mostrado em letra pequena
+  /// na tela de login para ajudar a descobrir por que o aparelho não alcançou o servidor.
+  final String? detail;
+  const ApiException(this.message, {this.status, this.detail});
 
   bool get isUnauthorized => status == 401;
 
@@ -75,9 +79,20 @@ class ApiClient {
       return await call().timeout(_timeout);
     } on TimeoutException {
       throw const ApiException('O servidor demorou para responder. Tente novamente.');
-    } on http.ClientException {
-      throw const ApiException('Não foi possível conectar ao servidor. Verifique sua internet e o endereço do servidor.');
+    } on http.ClientException catch (e) {
+      throw ApiException(
+        'Não foi possível conectar ao servidor. Verifique sua internet e o endereço do servidor.',
+        detail: _resumo(e.message),
+      );
     }
+  }
+
+  /// Texto técnico curto: tira o "ClientException with" e o endereço repetido do final.
+  static String? _resumo(String bruto) {
+    var t = bruto.replaceFirst(RegExp(r'^ClientException( with)?:?\s*'), '');
+    t = t.replaceFirst(RegExp(r',\s*uri=.*$'), '').trim();
+    if (t.isEmpty) return null;
+    return t.length > 160 ? '${t.substring(0, 157)}...' : t;
   }
 
   Future<Map<String, dynamic>> _send(Future<http.Response> Function() call) async {

@@ -1,45 +1,113 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
   <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
+    O Flutter troca o valor abaixo pelo --base-href informado no build.
+    A versão web do SICAPDA é publicada pelo SystemFluxe em /aplicativo/:
+      flutter build web --release --base-href /aplicativo/ --no-web-resources-cdn --pwa-strategy=none
+    (ver "Versão web" no README)
   -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0D0D0D">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="SICAPDA by Fluxe: controle de acesso e previsão de demanda alimentar. Acompanhe pessoas no local, previsão de refeições, desperdício e relatórios, de qualquer aparelho.">
 
-  <!-- iOS meta tags & icons -->
+  <!-- iOS: "Adicionar à Tela de Início" -->
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="fluxe_app">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <meta name="apple-mobile-web-app-title" content="SICAPDA">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <!-- Logo na aba do navegador -->
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 
-  <title>fluxe_app</title>
+  <title>SICAPDA</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body { margin: 0; height: 100%; background: #0D0D0D; }
+
+    /* Tela de carregamento: aparece na hora (o app leva alguns segundos para baixar e iniciar) e
+       sai quando o Flutter desenha o primeiro quadro. Visual igual ao da abertura do próprio app. */
+    #splash {
+      position: fixed; inset: 0; z-index: 10;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: #0D0D0D; color: #B0B0B0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      transition: opacity .35s ease;
+    }
+    #splash.saindo { opacity: 0; pointer-events: none; }
+    #splash img { width: min(260px, 70vw); height: auto; }
+    #splash .giro {
+      margin-top: 28px; width: 26px; height: 26px; box-sizing: border-box; border-radius: 50%;
+      border: 2.6px solid rgba(255, 193, 7, .22); border-top-color: #FFC107;
+      animation: sicapda-giro .9s linear infinite;
+    }
+    #splash p { margin: 18px 24px 0; font-size: 14px; text-align: center; min-height: 20px; }
+    #splash button {
+      margin-top: 14px; padding: 10px 22px; border: 0; border-radius: 12px; cursor: pointer;
+      background: #FFC107; color: #000; font: 600 15px system-ui, sans-serif;
+    }
+    @keyframes sicapda-giro { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { #splash .giro { animation-duration: 3s; } }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <div id="splash" role="status" aria-live="polite">
+    <img src="icons/splash-logo.png" alt="SICAPDA by Fluxe" width="520" height="170">
+    <div class="giro" aria-hidden="true"></div>
+    <p id="splash-aviso"></p>
+  </div>
+  <noscript>
+    <p style="position:fixed;z-index:11;inset:0;margin:0;display:flex;align-items:center;justify-content:center;background:#0D0D0D;color:#fff;font:16px system-ui,sans-serif;text-align:center;padding:24px">
+      O SICAPDA precisa do JavaScript ligado no navegador para funcionar. Ative o JavaScript e recarregue a página.
+    </p>
+  </noscript>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
+  <script>
+    (function () {
+      var splash = document.getElementById('splash');
+      var aviso = document.getElementById('splash-aviso');
+
+      // Some quando o Flutter desenha o primeiro quadro.
+      window.addEventListener('flutter-first-frame', function () {
+        splash.classList.add('saindo');
+        setTimeout(function () { splash.remove(); }, 450);
+      });
+
+      // Conexão lenta ou bloqueada: em vez de um círculo girando para sempre, explica e oferece recarregar.
+      setTimeout(function () {
+        if (!document.getElementById('splash')) return;
+        aviso.textContent = 'Ainda carregando… sua conexão pode estar lenta.';
+      }, 15000);
+      setTimeout(function () {
+        if (!document.getElementById('splash')) return;
+        aviso.textContent = 'O aplicativo está demorando para abrir. Verifique sua internet e tente de novo.';
+        var b = document.createElement('button');
+        b.textContent = 'Recarregar';
+        b.onclick = function () { location.reload(); };
+        aviso.after(b);
+      }, 45000);
+
+      // Service worker mínimo (não guarda nada em cache): só para o navegador oferecer "Instalar aplicativo".
+      if ('serviceWorker' in navigator &&
+          (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('sw.js').catch(function () {});
+        });
+      }
+    })();
+  </script>
+
+  <!--
+    Personalizações do carregamento do Flutter:
+    https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
 </body>

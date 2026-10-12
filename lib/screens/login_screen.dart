@@ -22,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   bool _showServer = false;
   String? _error;
+  String? _errorDetail;
 
   @override
   void initState() {
@@ -44,12 +45,18 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _loading = true;
       _error = null;
+      _errorDetail = null;
     });
     try {
       await AppScope.read(context).login(_email.text, _senha.text, serverUrl: _servidor.text);
       // O MaterialApp troca para o app autenticado ao ouvir o AppController.
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _errorDetail = e.detail;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _error = 'Não foi possível entrar. Tente novamente.');
     } finally {
@@ -88,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             textAlign: TextAlign.center,
                             style: TextStyle(color: AppColors.loginMuted, fontSize: 15)),
                         const SizedBox(height: 30),
-                        if (_error != null) _errorBanner(_error!),
+                        if (_error != null) _errorBanner(_error!, _errorDetail),
                         _field(
                           label: 'E-mail',
                           controller: _email,
@@ -169,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
 
-  Widget _errorBanner(String msg) => Container(
+  Widget _errorBanner(String msg, [String? detail]) => Container(
         margin: const EdgeInsets.only(bottom: 18),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -178,10 +185,27 @@ class _LoginScreenState extends State<LoginScreen> {
           border: Border.all(color: AppColors.red.withValues(alpha: 0.5)),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.error_outline_rounded, color: Color(0xFFFF8A8A), size: 20),
+            const Padding(
+              padding: EdgeInsets.only(top: 1),
+              child: Icon(Icons.error_outline_rounded, color: Color(0xFFFF8A8A), size: 20),
+            ),
             const SizedBox(width: 10),
-            Expanded(child: Text(msg, style: const TextStyle(color: Color(0xFFFFB4B4), fontSize: 13.5))),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(msg, style: const TextStyle(color: Color(0xFFFFB4B4), fontSize: 13.5)),
+                  if (detail != null) ...[
+                    const SizedBox(height: 6),
+                    Text('Detalhe técnico: $detail',
+                        key: const Key('erro-detalhe'),
+                        style: TextStyle(color: const Color(0xFFFFB4B4).withValues(alpha: 0.7), fontSize: 11.5)),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       );
@@ -273,7 +297,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: const TextStyle(color: AppColors.loginMuted, fontSize: 13)),
             ),
           ),
-          if (_showServer)
+          if (_showServer) ...[
             _field(
               label: 'Endereço do servidor (SystemFluxe)',
               controller: _servidor,
@@ -282,6 +306,29 @@ class _LoginScreenState extends State<LoginScreen> {
               keyboardType: TextInputType.url,
               validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe o endereço do servidor' : null,
             ),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _servidor,
+              builder: (_, v, _) => v.text.trim().toLowerCase().startsWith('http://')
+                  ? const Padding(
+                      padding: EdgeInsets.only(top: 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.accent),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Endereço sem HTTPS: os dados trafegam sem criptografia. Use só em rede local de teste.',
+                              key: Key('aviso-http'),
+                              style: TextStyle(color: AppColors.loginMuted, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
         ],
       );
 

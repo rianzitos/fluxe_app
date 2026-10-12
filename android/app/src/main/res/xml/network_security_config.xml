@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Regras de rede do aplicativo.
+
+  • O servidor de produção (fluxeteam.com.br) SEMPRE usa HTTPS: o Android recusa HTTP simples para ele.
+  • Para qualquer outro endereço o HTTP é permitido. Isso existe para testar o app no celular contra um
+    SystemFluxe rodando no seu computador, na mesma rede Wi-Fi (ex.: http://192.168.0.10:8000), onde não há
+    certificado HTTPS. A pessoa precisa digitar esse endereço em "Servidor" na tela de login (o app avisa
+    que ele não é criptografado); o padrão do app continua sendo o servidor de produção, em HTTPS.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">fluxeteam.com.br</domain>
+    </domain-config>
+</network-security-config>
