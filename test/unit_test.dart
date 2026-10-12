@@ -118,6 +118,17 @@ void main() {
             .having((e) => e.detail, 'detail', startsWith("Failed host lookup: 'x.test'"))),
       );
     });
+    test('certificado HTTPS inválido (HandshakeException) também vira a mensagem clara, com o motivo', () async {
+      final certificadoRuim = MockClient((_) async =>
+          throw const HandshakeException('Handshake error in client (OS Error: CERTIFICATE_VERIFY_FAILED: certificate has expired)'));
+      final client = ApiClient(baseUrl: 'https://x.test', client: certificadoRuim);
+      expect(
+        () => client.post('/login', {'email': 'a@b.c', 'senha': '1'}),
+        throwsA(isA<ApiException>()
+            .having((e) => e.message, 'message', startsWith('Não foi possível conectar ao servidor'))
+            .having((e) => e.detail, 'detail', contains('certificate has expired'))),
+      );
+    });
   });
 
   group('servidor padrão', () {

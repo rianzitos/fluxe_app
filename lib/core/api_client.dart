@@ -84,6 +84,13 @@ class ApiClient {
         'Não foi possível conectar ao servidor. Verifique sua internet e o endereço do servidor.',
         detail: _resumo(e.message),
       );
+    } catch (e) {
+      // Falhas de rede que o pacote http não embrulha em ClientException, como certificado HTTPS inválido
+      // ou vencido (HandshakeException) ou endereço malformado: viram a mesma mensagem, com o motivo.
+      throw ApiException(
+        'Não foi possível conectar ao servidor. Verifique sua internet e o endereço do servidor.',
+        detail: _resumo(e.toString()),
+      );
     }
   }
 
