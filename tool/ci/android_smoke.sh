@@ -76,9 +76,10 @@ fi
 # O botão "Entrar" é o ponto de referência: o resto da tela fica a distâncias fixas (em dp) dele. Como o teclado
 # do Android sobe e reorganiza a tela a cada campo tocado, a posição do botão é medida de novo antes de cada toque.
 X=0; Y=0
+ATUAL=$(mktemp --suffix=.png)                                      # captura de trabalho: não entra na pasta de saída
 achar_entrar() {
-  adb exec-out screencap -p > "$OUT/_atual.png"
-  if read -r nx ny < <(python3 tool/ci/detectar_botao.py "$OUT/_atual.png"); then X=$nx; Y=$ny; return 0; fi
+  adb exec-out screencap -p > "$ATUAL"
+  if read -r nx ny < <(python3 tool/ci/detectar_botao.py "$ATUAL"); then X=$nx; Y=$ny; return 0; fi
   return 1
 }
 

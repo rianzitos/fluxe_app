@@ -145,7 +145,7 @@ Também dá para criar a Release manualmente com uma tag: `git tag v1.1.1 && git
 
 O script copia os instaladores para `storage\downloads` e a versão web para `public\aplicativo` do SystemFluxe. Para o instalador do Windows é preciso ter o [Inno Setup 6](https://jrsoftware.org/isdl.php) (`winget install JRSoftware.InnoSetup`). Passo a passo manual: `flutter build windows --release` e depois `.\tool\empacotar_windows.ps1`, que gera `dist\SICAPDA-Setup.exe`. No Android: `flutter build apk --release --target-platform android-arm,android-arm64,android-x64` (arquivo em `build/app/outputs/flutter-apk/app-release.apk`).
 
-> O APK é **único para todos os aparelhos**: inclui ARM de 32 e 64 bits (todos os celulares e tablets) e **x86_64** (emulador do Android Studio, Chromebooks, BlueStacks). Por isso tem cerca de 50 MB. Antes o APK só tinha ARM e dava erro de arquitetura ao instalar no emulador.
+> O APK é **único para todos os aparelhos**: inclui ARM de 32 e 64 bits (todos os celulares e tablets) e **x86_64** (emulador do Android Studio, Chromebooks, BlueStacks). Por isso tem cerca de 27 MB (as bibliotecas nativas vão compactadas dentro do APK). Antes o APK só tinha ARM e dava erro de arquitetura ao instalar no emulador.
 
 ### Versão web
 
