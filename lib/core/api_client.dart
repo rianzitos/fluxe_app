@@ -82,17 +82,21 @@ class ApiClient {
     } on http.ClientException catch (e) {
       throw ApiException(
         'Não foi possível conectar ao servidor. Verifique sua internet e o endereço do servidor.',
-        detail: _resumo(e.message),
+        detail: _detalhe(_resumo(e.message)),
       );
     } catch (e) {
       // Falhas de rede que o pacote http não embrulha em ClientException, como certificado HTTPS inválido
       // ou vencido (HandshakeException) ou endereço malformado: viram a mesma mensagem, com o motivo.
       throw ApiException(
         'Não foi possível conectar ao servidor. Verifique sua internet e o endereço do servidor.',
-        detail: _resumo(e.toString()),
+        detail: _detalhe(_resumo(e.toString())),
       );
     }
   }
+
+  /// Junta ao motivo o servidor que foi tentado: ajuda a perceber endereço errado
+  /// (ex.: "http://localhost" no celular aponta para o próprio celular, não para o computador).
+  String _detalhe(String? motivo) => motivo == null ? 'servidor: $baseUrl' : '$motivo · servidor: $baseUrl';
 
   /// Texto técnico curto: tira o "ClientException with" e o endereço repetido do final.
   static String? _resumo(String bruto) {

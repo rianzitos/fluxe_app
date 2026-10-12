@@ -115,7 +115,8 @@ void main() {
         () => client.post('/login', {'email': 'a@b.c', 'senha': '1'}),
         throwsA(isA<ApiException>()
             .having((e) => e.message, 'message', startsWith('Não foi possível conectar ao servidor'))
-            .having((e) => e.detail, 'detail', startsWith("Failed host lookup: 'x.test'"))),
+            .having((e) => e.detail, 'detail', startsWith("Failed host lookup: 'x.test'"))
+            .having((e) => e.detail, 'detail', endsWith('servidor: https://x.test'))),
       );
     });
     test('certificado HTTPS inválido (HandshakeException) também vira a mensagem clara, com o motivo', () async {
