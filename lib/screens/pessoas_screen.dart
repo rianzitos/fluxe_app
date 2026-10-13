@@ -6,8 +6,9 @@ import '../core/theme.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
 import '../widgets/page_header.dart';
+import 'cadastro_pessoas.dart';
 
-/// Pessoas: quem está no local agora, por grupo.
+/// Pessoas: quem está no local agora, por grupo (aba "Presentes agora"), e o cadastro de pessoas e cartões (aba "Cadastro").
 class PessoasScreen extends StatefulWidget {
   final VoidCallback onMenu;
   final ValueListenable<int> tabRefresh;
@@ -21,6 +22,10 @@ class _PessoasScreenState extends State<PessoasScreen> with TabRefresh {
   late Future<PessoasData> _future;
   final _busca = TextEditingController();
   String _dataExtenso = '';
+
+  /// 0 = Presentes agora, 1 = Cadastro. O Cadastro só é montado (e só consulta o servidor) na primeira vez que é aberto.
+  int _aba = 0;
+  bool _cadastroAberto = false;
 
   @override
   ValueListenable<int> get tabRefresh => widget.tabRefresh;
@@ -57,31 +62,46 @@ class _PessoasScreenState extends State<PessoasScreen> with TabRefresh {
     } catch (_) {}
   }
 
+  void _selecionarAba(int i) => setState(() {
+        _aba = i;
+        if (i == 1) _cadastroAberto = true;
+      });
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         PageHeader(
           title: 'Pessoas',
-          subtitle: _dataExtenso.isEmpty ? 'Quem está no local agora' : _dataExtenso,
+          subtitle: _aba == 1
+              ? 'Cadastro de pessoas e cartões'
+              : (_dataExtenso.isEmpty ? 'Quem está no local agora' : _dataExtenso),
           onMenu: widget.onMenu,
         ),
+        _AbasPessoas(selecionada: _aba, onSelect: _selecionarAba),
         Expanded(
-          child: AsyncBody<PessoasData>(
-            future: _future,
-            onRefresh: _refresh,
-            onRetry: reload,
-            builder: (context, d) => ListenableBuilder(
-              listenable: _busca,
-              builder: (context, _) {
-                final termo = _busca.text.trim().toLowerCase();
-                return PageList(children: [
-                  CardGrid(children: [for (final c in d.cards) StatCard(c)]),
-                  _SearchField(controller: _busca),
-                  for (final g in d.grupos) _GrupoCard(g, termo),
-                ]);
-              },
-            ),
+          child: IndexedStack(
+            index: _aba,
+            sizing: StackFit.expand,
+            children: [
+              AsyncBody<PessoasData>(
+                future: _future,
+                onRefresh: _refresh,
+                onRetry: reload,
+                builder: (context, d) => ListenableBuilder(
+                  listenable: _busca,
+                  builder: (context, _) {
+                    final termo = _busca.text.trim().toLowerCase();
+                    return PageList(children: [
+                      CardGrid(children: [for (final c in d.cards) StatCard(c)]),
+                      SearchField(controller: _busca, hint: 'Buscar por nome ou função...'),
+                      for (final g in d.grupos) _GrupoCard(g, termo),
+                    ]);
+                  },
+                ),
+              ),
+              if (_cadastroAberto) CadastroPessoasTab(tabRefresh: widget.tabRefresh) else const SizedBox.shrink(),
+            ],
           ),
         ),
       ],
@@ -89,39 +109,78 @@ class _PessoasScreenState extends State<PessoasScreen> with TabRefresh {
   }
 }
 
-class _SearchField extends StatelessWidget {
-  final TextEditingController controller;
-  const _SearchField({required this.controller});
+/// Seletor das duas abas da tela: Presentes agora | Cadastro.
+class _AbasPessoas extends StatelessWidget {
+  final int selecionada;
+  final ValueChanged<int> onSelect;
+  const _AbasPessoas({required this.selecionada, required this.onSelect});
 
   @override
   Widget build(BuildContext context) {
     final pal = context.pal;
-    return TextField(
-      controller: controller,
-      textInputAction: TextInputAction.search,
-      style: TextStyle(color: pal.text, fontSize: 14.5),
-      decoration: InputDecoration(
-        hintText: 'Buscar por nome ou função...',
-        hintStyle: TextStyle(color: pal.textMuted, fontSize: 14),
-        prefixIcon: Icon(Icons.search_rounded, color: pal.textMuted),
-        suffixIcon: controller.text.isEmpty
-            ? null
-            : IconButton(
-                icon: Icon(Icons.close_rounded, color: pal.textMuted, size: 20),
-                onPressed: controller.clear,
+
+    Widget aba(int i, IconData icone, String rotulo) {
+      final ativa = selecionada == i;
+      return Expanded(
+        child: Semantics(
+          button: true,
+          selected: ativa,
+          child: Material(
+            color: ativa ? AppColors.accent : Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
+            child: InkWell(
+              key: Key('aba-pessoas-$i'),
+              borderRadius: BorderRadius.circular(11),
+              onTap: () => onSelect(i),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icone, size: 18, color: ativa ? Colors.black : pal.textMuted),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        rotulo,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5, color: ativa ? Colors.black : pal.text),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-        filled: true,
-        fillColor: pal.card,
-        contentPadding: const EdgeInsets.symmetric(vertical: 15),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: pal.border)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: pal.border)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.accent, width: 1.4)),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        // No celular ocupa a largura toda; no PC não estica por uma janela de 1000 pixels.
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: pal.card,
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: pal.border),
+            ),
+            child: Row(
+              children: [
+                aba(0, Icons.how_to_reg_rounded, 'Presentes agora'),
+                aba(1, Icons.badge_outlined, 'Cadastro'),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 }
-
-const _avatarColors = [AppColors.purple, AppColors.black, Color(0xFFD97706), Color(0xFF0E9F6E), Color(0xFF2563EB)];
 
 class _GrupoCard extends StatelessWidget {
   final GrupoPessoas grupo;
@@ -161,7 +220,7 @@ class _GrupoCard extends StatelessWidget {
           if (lista.isEmpty)
             const EmptyNote('Ninguém presente no momento.')
           else
-            for (var i = 0; i < lista.length; i++) _PessoaTile(lista[i], _avatarColors[i % _avatarColors.length]),
+            for (var i = 0; i < lista.length; i++) _PessoaTile(lista[i], kAvatarColors[i % kAvatarColors.length]),
         ],
       ),
     );

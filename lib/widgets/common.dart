@@ -281,6 +281,57 @@ class EmptyNote extends StatelessWidget {
       );
 }
 
+/// Cores dos avatares das listas de pessoas (alternadas para dar variedade sem sair da paleta da marca).
+const kAvatarColors = [AppColors.purple, AppColors.black, Color(0xFFD97706), Color(0xFF0E9F6E), Color(0xFF2563EB)];
+
+/// Campo de busca arredondado (Pessoas e Cadastro).
+class SearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  const SearchField({super.key, required this.controller, required this.hint});
+
+  @override
+  Widget build(BuildContext context) {
+    final pal = context.pal;
+    return TextField(
+      controller: controller,
+      textInputAction: TextInputAction.search,
+      style: TextStyle(color: pal.text, fontSize: 14.5),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: pal.textMuted, fontSize: 14),
+        prefixIcon: Icon(Icons.search_rounded, color: pal.textMuted),
+        suffixIcon: controller.text.isEmpty
+            ? null
+            : IconButton(
+                tooltip: 'Limpar busca',
+                icon: Icon(Icons.close_rounded, color: pal.textMuted, size: 20),
+                onPressed: controller.clear,
+              ),
+        filled: true,
+        fillColor: pal.card,
+        contentPadding: const EdgeInsets.symmetric(vertical: 15),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: pal.border)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: pal.border)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.accent, width: 1.4)),
+      ),
+    );
+  }
+}
+
+/// Folha que sobe de baixo (formulários e ações). Em janelas largas (PC) fica centralizada, com largura limitada.
+/// Devolve o que a folha entregar em `Navigator.pop`, ou null se foi fechada.
+Future<T?> mostrarFolha<T>(BuildContext context, WidgetBuilder builder) => showModalBottomSheet<T>(
+      context: context,
+      backgroundColor: context.pal.background,
+      showDragHandle: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      constraints: const BoxConstraints(maxWidth: 560),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: builder,
+    );
+
 /// Carrega um Future e mostra loading / erro / conteúdo, com pull-to-refresh.
 /// Ao recarregar, mantém o conteúdo anterior na tela (só mostra uma barra de progresso).
 class AsyncBody<T> extends StatelessWidget {

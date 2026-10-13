@@ -11,6 +11,8 @@ int _i(dynamic v) => _d(v)?.round() ?? 0;
 
 String _s(dynamic v, [String fallback = '']) => v == null ? fallback : v.toString();
 
+bool _b(dynamic v) => v == true || v == 1 || v == '1';
+
 List<Map<String, dynamic>> _list(dynamic v) =>
     (v as List? ?? const []).whereType<Map<String, dynamic>>().toList();
 
@@ -332,6 +334,124 @@ class PessoasData {
                 ))
             .toList(),
         _s(j['dataExtenso']),
+      );
+}
+
+// ─── Cadastro de pessoas e cartões ─────────────────────────────────────────
+
+class CartaoPessoa {
+  final int id;
+  final String uid;
+  final bool ativo;
+  const CartaoPessoa({required this.id, required this.uid, required this.ativo});
+
+  factory CartaoPessoa.fromJson(Map<String, dynamic> j) =>
+      CartaoPessoa(id: _i(j['id']), uid: _s(j['uid']), ativo: _b(j['ativo']));
+}
+
+class PessoaCadastro {
+  final int id;
+  final String nome;
+  final String cargo;
+  final String categoria; // operador | supervisor | prestador
+  final String categoriaRotulo;
+  final String? matricula;
+  final bool ativo;
+  final bool presente;
+  final List<CartaoPessoa> cartoes;
+
+  const PessoaCadastro({
+    required this.id,
+    required this.nome,
+    required this.cargo,
+    required this.categoria,
+    required this.categoriaRotulo,
+    required this.ativo,
+    required this.presente,
+    required this.cartoes,
+    this.matricula,
+  });
+
+  factory PessoaCadastro.fromJson(Map<String, dynamic> j) {
+    final matricula = _s(j['matricula']).trim();
+    return PessoaCadastro(
+      id: _i(j['id']),
+      nome: _s(j['nome']),
+      cargo: _s(j['cargo']),
+      categoria: _s(j['categoria'], 'operador'),
+      categoriaRotulo: _s(j['categoriaRotulo'], _s(j['categoria'])),
+      matricula: matricula.isEmpty ? null : matricula,
+      ativo: _b(j['ativo']),
+      presente: _b(j['presente']),
+      cartoes: _list(j['cartoes']).map(CartaoPessoa.fromJson).toList(),
+    );
+  }
+
+  bool get temCartaoAtivo => cartoes.any((c) => c.ativo);
+
+  /// Texto da busca (nome, função, matrícula e cartões, em minúsculas), como na aba Cadastro do site.
+  String get textoBusca => [nome, cargo, matricula ?? '', ...cartoes.map((c) => c.uid)].join(' ').toLowerCase();
+}
+
+class CategoriaOpcao {
+  final String valor;
+  final String rotulo;
+  const CategoriaOpcao(this.valor, this.rotulo);
+}
+
+/// Categorias usadas se o servidor não mandar a lista (as mesmas do site).
+const kCategoriasPadrao = [
+  CategoriaOpcao('operador', 'Operador'),
+  CategoriaOpcao('supervisor', 'Supervisor'),
+  CategoriaOpcao('prestador', 'Prestador de Serviço'),
+];
+
+class CadastroData {
+  /// Só o administrador da empresa altera o cadastro; os outros usuários só consultam.
+  final bool podeEditar;
+  final int total;
+  final int ativas;
+  final int semCartaoAtivo;
+  final List<CategoriaOpcao> categorias;
+  final List<PessoaCadastro> pessoas;
+
+  const CadastroData({
+    required this.podeEditar,
+    required this.total,
+    required this.ativas,
+    required this.semCartaoAtivo,
+    required this.categorias,
+    required this.pessoas,
+  });
+
+  factory CadastroData.fromJson(Map<String, dynamic> j) {
+    final resumo = (j['resumo'] as Map<String, dynamic>?) ?? const {};
+    final categorias = _list(j['categorias']).map((e) => CategoriaOpcao(_s(e['valor']), _s(e['rotulo']))).toList();
+    final pessoas = _list(j['pessoas']).map(PessoaCadastro.fromJson).toList();
+    return CadastroData(
+      podeEditar: _b(j['podeEditar']),
+      total: _i(resumo['total'] ?? pessoas.length),
+      ativas: _i(resumo['ativas']),
+      semCartaoAtivo: _i(resumo['semCartaoAtivo']),
+      categorias: categorias.isEmpty ? kCategoriasPadrao : categorias,
+      pessoas: pessoas,
+    );
+  }
+}
+
+/// Cartão lido numa catraca que ainda não tem dono (aparece para o administrador vincular).
+class LeituraCartao {
+  final String uid;
+  final int leituras;
+  final String dispositivo;
+  final String quando; // "agora", "há 2 min"...
+  const LeituraCartao({required this.uid, required this.leituras, required this.dispositivo, required this.quando});
+
+  factory LeituraCartao.fromJson(Map<String, dynamic> j) => LeituraCartao(
+        uid: _s(j['uid']),
+        leituras: _i(j['leituras']),
+        dispositivo: _s(j['dispositivo']),
+        quando: _s(j['quando']),
       );
 }
 
