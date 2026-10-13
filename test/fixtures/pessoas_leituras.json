@@ -1,0 +1,20 @@
+{
+    "sucesso": true,
+    "mensagem": "ok",
+    "leituras": [
+        {
+            "uid": "F00DBA5E",
+            "leituras": 3,
+            "dispositivo": "Catraca Portaria",
+            "quando": "agora",
+            "instante": "2026-10-13 12:34:58"
+        },
+        {
+            "uid": "0DDC0FFE",
+            "leituras": 1,
+            "dispositivo": "Catraca Refeitório",
+            "quando": "agora",
+            "instante": "2026-10-13 12:34:58"
+        }
+    ]
+}

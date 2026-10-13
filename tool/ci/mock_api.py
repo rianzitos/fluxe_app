@@ -19,8 +19,18 @@ ROTAS_GET = {
     '/api/painel': 'painel',
     '/api/analise-mensal': 'analise',
     '/api/pessoas': 'pessoas',
+    '/api/pessoas/cadastro': 'pessoas_cadastro',
+    '/api/pessoas/leituras': 'pessoas_leituras',
     '/api/relatorios': 'relatorios',
     '/api/assistente': 'assistente',
+}
+ROTAS_ESCRITA_CADASTRO = {
+    '/api/pessoas/criar',
+    '/api/pessoas/editar',
+    '/api/pessoas/ativo',
+    '/api/pessoas/cartao',
+    '/api/pessoas/cartao/ativo',
+    '/api/pessoas/cartao/remover',
 }
 
 
@@ -60,6 +70,9 @@ class Handler(BaseHTTPRequestHandler):
                 self._enviar(401, json.dumps({'sucesso': False, 'mensagem': 'E-mail ou senha inválidos.'}).encode())
         elif rota == '/api/assistente':
             self._enviar(200, self._fixture('assistente_post'))
+        elif rota in ROTAS_ESCRITA_CADASTRO:
+            # Cadastro de pessoas e cartões: o mock não guarda nada, só confirma (a lista continua a mesma do fixture).
+            self._enviar(200, json.dumps({'sucesso': True, 'mensagem': 'Pronto.'}).encode())
         else:
             self._enviar(404, json.dumps({'sucesso': False, 'mensagem': 'Rota não encontrada.'}).encode())
 

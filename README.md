@@ -25,10 +25,11 @@ Ele foi pensado para quem não está o tempo todo na frente de um computador, co
 - **Estamos desperdiçando comida?** Acompanhamento diário e mensal de produção e desperdício, com alertas quando passa da meta.
 - **O que aconteceu nos acessos?** Consulta e exportação dos registros de entrada e saída, com filtros.
 - **Dúvidas rápidas.** O assistente responde perguntas como "previsão para sexta" ou "como está o desperdício?" em linguagem natural.
+- **Quem está cadastrado e com qual cartão?** O administrador cadastra uma pessoa, vincula o cartão RFID (basta passá-lo numa catraca e escolher na lista) e ativa ou desativa acessos, tudo pelo celular.
 
 Na prática, o app ajuda a **planejar a produção com mais precisão, reduzir o desperdício de alimentos, ter mais segurança e visibilidade sobre quem circula na instituição** e tomar decisões com dados em tempo real, de qualquer lugar.
 
-> O app é de **consulta e acompanhamento**: cadastros, configurações da empresa e a leitura das catracas continuam sendo feitos pela versão web e pelos dispositivos IoT. O app usa os mesmos dados.
+> O app é, principalmente, de **consulta e acompanhamento**, com uma exceção: o **administrador da empresa também cadastra pessoas e cartões** (aba *Cadastro* de **Pessoas**). As configurações da empresa, os dispositivos IoT e a importação de planilha continuam na versão web, e a leitura das catracas continua sendo feita pelos próprios dispositivos. O app usa os mesmos dados.
 
 ---
 
@@ -54,12 +55,28 @@ O login usa os **mesmos usuários e senhas da web**.
 | **Login** | `/login` | E-mail e senha; campo opcional para trocar o endereço do servidor |
 | **Painel** | `/painel` | Usuários ativos, acessos, refeições previstas, acurácia, gráfico de previsão de demanda, distribuição de refeições, previsão das próximas horas, alertas e recomendações |
 | **Análise mensal** | `/acessos` | Total produzido/desperdiçado, média de pessoas, gráficos diários e insights do mês, com seletor de mês |
-| **Pessoas** | `/pessoas` | Quem está no local agora, por grupo (operadores, supervisores, prestadores), com busca |
+| **Pessoas** | `/pessoas` | Duas abas: **Presentes agora** (quem está no local, por grupo, com busca) e **Cadastro** (pessoas e cartões; o administrador adiciona, edita, vincula cartões e ativa/desativa) |
 | **Assistente IA** | `/assistente` | Chat com previsões (amanhã, sexta, semanal), desperdício, precisão, feriados; perguntas rápidas |
 | **Relatórios** | `/relatorios` | Registros de acesso com filtro por período, nome/função e categoria; paginação; exportação em CSV |
 | **Configurações** | `/configuracoes` | Perfil, tema (claro / escuro / sistema), endereço do servidor e sair da conta |
 
 Outros detalhes: menu lateral escuro igual ao da web (no computador ele fica sempre visível e os cartões de resumo ficam lado a lado; no celular é um menu deslizante com barra de abas inferior), a logo oficial do SICAPDA, sino com a contagem de alertas, *pull-to-refresh* em todas as telas, tema claro e escuro, e identidade visual idêntica à web (cores `#0D0D0D` / `#FFC107`, fontes **Sora** e **Inter**).
+
+### Cadastro de pessoas e cartões
+
+Em **Pessoas → Cadastro** ficam todas as pessoas da empresa com os cartões de cada uma (as ativas primeiro). A busca acha por nome, função, matrícula ou **UID do cartão**, e a lista mostra quem está **Presente agora** e quem está **Desativada**.
+
+Só o **administrador da empresa** altera (os outros usuários veem a lista e um aviso de somente leitura; o servidor confere o perfil em toda ação, então esconder os botões não é a única proteção):
+
+| Ação | Como fazer no app |
+|---|---|
+| Adicionar pessoa | **Adicionar pessoa**: nome, cargo/função, categoria, matrícula (opcional) e, se quiser, já o cartão |
+| Vincular um cartão | **+ Vincular cartão** na pessoa. **Passe o cartão numa catraca**: ele aparece sozinho na lista "Cartões lidos nas catracas e ainda sem dono" (atualiza a cada 3 s; o recém-lido vem marcado como *novo*). Toque nele e confirme. Também dá para digitar o UID |
+| Editar | Menu **⋮** da pessoa → **Editar** |
+| Desativar / reativar pessoa | Menu **⋮** → **Desativar**. Desativada, a pessoa é negada na catraca e sai das contagens, mas o histórico de acessos fica. Pessoas nunca são apagadas |
+| Desativar, ativar ou remover um cartão | Toque no cartão (o UID) da pessoa. Remover libera o UID para outra pessoa |
+
+As regras são as mesmas do site, porque as duas pontas usam o mesmo código no servidor (`CadastroPessoas`): UID com 4 a 100 letras, números, hífen ou sublinhado (o app já deixa em maiúsculas e sem espaços ou `:`), **um UID só existe uma vez no sistema inteiro**, e uma empresa nunca enxerga nem altera pessoas de outra. A **importação de planilha (CSV)** continua só na versão web.
 
 ---
 
@@ -209,6 +226,7 @@ lib/
 ├── main.dart                  # Ponto de entrada, tema e roteamento login ↔ app
 ├── core/
 │   ├── api_client.dart        # Cliente HTTP (Bearer token, erros, timeout)
+│   ├── cadastro_service.dart  # Cadastro de pessoas e cartões na API (+ normalização e regra do UID)
 │   ├── app_state.dart         # Sessão, token seguro, servidor, tema, alertas
 │   ├── theme.dart             # Identidade visual (claro/escuro), cores e fontes
 │   ├── layout.dart            # Ponto de corte celular × PC (menu lateral fixo)
@@ -226,7 +244,9 @@ lib/
     ├── app_shell.dart         # Menu lateral (fixo no PC, deslizante no celular) + abas
     ├── painel_screen.dart
     ├── analise_screen.dart
-    ├── pessoas_screen.dart
+    ├── pessoas_screen.dart        # Abas "Presentes agora" e "Cadastro"
+    ├── cadastro_pessoas.dart      # Aba Cadastro: lista, busca, ações por pessoa e por cartão
+    ├── cadastro_formularios.dart  # Formulários (adicionar/editar pessoa, vincular cartão) e lista de cartões lidos nas catracas
     ├── assistente_screen.dart
     ├── relatorios_screen.dart
     └── configuracoes_screen.dart
@@ -256,11 +276,19 @@ Todas as rotas ficam no SystemFluxe e, exceto o login, exigem o cabeçalho `Auth
 | `GET` | `/api/painel` | Dados do Painel |
 | `GET` | `/api/analise-mensal?mes=YYYY-MM` | Análise mensal |
 | `GET` | `/api/pessoas` | Pessoas presentes agora |
+| `GET` | `/api/pessoas/cadastro` | Todas as pessoas da empresa com os cartões, resumo, categorias e `podeEditar` (qualquer usuário) |
+| `GET` | `/api/pessoas/leituras` | Cartões lidos nas catracas e ainda sem dono (**administrador**) |
+| `POST` | `/api/pessoas/criar` | `{nome, cargo, categoria, matricula?, uid?}`: cadastra a pessoa (com `uid`, vincula o cartão junto, tudo ou nada) (**administrador**) |
+| `POST` | `/api/pessoas/editar` | `{id, nome, cargo, categoria, matricula?}` (**administrador**) |
+| `POST` | `/api/pessoas/ativo` | `{id, ativo}` desativa ou reativa a pessoa (**administrador**) |
+| `POST` | `/api/pessoas/cartao` | `{funcionario_id, uid}` vincula um cartão (**administrador**) |
+| `POST` | `/api/pessoas/cartao/ativo` | `{id, ativo}` ativa ou desativa um cartão (**administrador**) |
+| `POST` | `/api/pessoas/cartao/remover` | `{id}` remove o cartão e libera o UID (**administrador**) |
 | `GET` | `/api/relatorios?de&ate&busca&categoria&pagina` | Registros de acesso paginados |
 | `GET` | `/api/relatorios/exportar` | CSV com os mesmos filtros |
 | `GET` / `POST` | `/api/assistente` | Informações do assistente / enviar pergunta `{mensagem}` |
 
-Respostas de sucesso trazem `"sucesso": true`; erros trazem `{"sucesso": false, "mensagem": "..."}` com o código HTTP adequado (401, 403, 404, 422, 500). Se o token expirar ou for invalidado, o app volta sozinho para o login.
+Respostas de sucesso trazem `"sucesso": true`; erros trazem `{"sucesso": false, "mensagem": "..."}` com o código HTTP adequado (401, 403, 404, 409, 422, 500). No cadastro, `403` é "só o administrador", `404` é pessoa ou cartão que não existe na empresa, `409` é cartão que já tem dono e `422` é dado inválido; a `mensagem` já vem pronta para mostrar. Se o token expirar ou for invalidado, o app volta sozinho para o login.
 
 ---
 
@@ -271,7 +299,7 @@ flutter analyze
 flutter test
 ```
 
-Os testes cobrem formatação, cliente HTTP, servidor padrão (celular × web), sessão (inclusive cofre que falha), leitura dos modelos e o fluxo completo do app (login, navegação por todas as telas, logout e tema). Eles usam **respostas reais da API** salvas em `test/fixtures/`, então não precisam de internet nem de servidor.
+Os testes cobrem formatação, cliente HTTP, servidor padrão (celular × web), sessão (inclusive cofre que falha), leitura dos modelos e o fluxo completo do app (login, navegação por todas as telas, logout e tema). O Cadastro de pessoas tem o seu próprio arquivo (`test/cadastro_test.dart`): regras do UID, o que vai pela rede em cada ação, e as telas (adicionar, editar, vincular cartão com a lista das catracas atualizando sozinha, ativar/desativar com confirmação, somente leitura, servidor desatualizado, PC e tema escuro). Eles usam **respostas reais da API** salvas em `test/fixtures/`, então não precisam de internet nem de servidor.
 
 ---
 
@@ -303,6 +331,9 @@ Os testes cobrem formatação, cliente HTTP, servidor padrão (celular × web), 
 | Versão web fica só com a logo girando / tela em branco | Conexão lenta (o app tem ~4 MB) ou arquivos incompletos em `public/aplicativo/`. Depois de 45 s a tela oferece "Recarregar". Se o site estiver sob um proxy, confira se `canvaskit/canvaskit.wasm` abre (200) e se o `main.dart.js` foi enviado inteiro. |
 | Versão web: "Não foi possível conectar ao servidor" ao rodar `flutter run -d chrome` | Aponte o app para o servidor em **Servidor** (a API responde CORS). Se o seu servidor ainda não tem a versão atual do SystemFluxe, atualize: sem os cabeçalhos CORS o navegador bloqueia o login. |
 | APK não instala no emulador ("INSTALL_FAILED_NO_MATCHING_ABIS") | Era o APK só ARM das versões antigas; a atual inclui x86_64. Baixe o APK novo. |
+| Na aba Cadastro: "O servidor ainda não tem o cadastro pelo aplicativo" | O app é mais novo que o SystemFluxe do servidor: as rotas `/api/pessoas/cadastro` e `/api/pessoas/*` ainda não existem lá. Publique a versão atual do SystemFluxe (`ApiController.php`, `PessoaController.php`, `CadastroPessoas.php` e `CadastroException.php`). |
+| Na aba Cadastro não aparecem os botões de adicionar e vincular | Só o administrador da empresa altera o cadastro; as outras contas só consultam. |
+| A lista "Cartões lidos nas catracas" fica vazia | Nenhuma catraca leu um cartão ainda sem dono nos últimos 30 dias, ou falta rodar a *Migration 005* (tabela `cartoes_nao_cadastrados`) no banco. Dá para digitar o UID do mesmo jeito. |
 | Painel sem dados ou "Sem movimento previsto" | Ainda não há registros nas catracas ou produção cadastrada, ou está fora do expediente. É o mesmo comportamento da web. |
 | `git pull` reclama de `pubspec.lock`, `linux/`, `macos/`, `windows/` | São arquivos gerados pelo Flutter. Descarte com `git checkout -- pubspec.lock analysis_options.yaml linux macos windows`, faça o pull e rode `flutter pub get`. |
 

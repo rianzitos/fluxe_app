@@ -1,0 +1,143 @@
+{
+    "sucesso": true,
+    "podeEditar": true,
+    "resumo": {
+        "total": 7,
+        "ativas": 6,
+        "semCartaoAtivo": 1
+    },
+    "categorias": [
+        {
+            "valor": "operador",
+            "rotulo": "Operador"
+        },
+        {
+            "valor": "supervisor",
+            "rotulo": "Supervisor"
+        },
+        {
+            "valor": "prestador",
+            "rotulo": "Prestador de Serviço"
+        }
+    ],
+    "pessoas": [
+        {
+            "id": 1,
+            "nome": "Ana Beatriz Santos",
+            "cargo": "Operadora de Produção",
+            "categoria": "operador",
+            "matricula": "1001",
+            "ativo": true,
+            "cartoes": [
+                {
+                    "id": 1,
+                    "uid": "A1B2C3D4",
+                    "ativo": true
+                }
+            ],
+            "categoriaRotulo": "Operador",
+            "presente": true
+        },
+        {
+            "id": 2,
+            "nome": "Bruno Henrique Lima",
+            "cargo": "Operador de Embalagem",
+            "categoria": "operador",
+            "matricula": "1002",
+            "ativo": true,
+            "cartoes": [
+                {
+                    "id": 2,
+                    "uid": "E5F6A7B8",
+                    "ativo": true
+                },
+                {
+                    "id": 3,
+                    "uid": "9C0D1E2F",
+                    "ativo": false
+                }
+            ],
+            "categoriaRotulo": "Operador",
+            "presente": false
+        },
+        {
+            "id": 3,
+            "nome": "Camila Ferreira",
+            "cargo": "Auxiliar de Cozinha",
+            "categoria": "operador",
+            "matricula": "1003",
+            "ativo": true,
+            "cartoes": [],
+            "categoriaRotulo": "Operador",
+            "presente": false
+        },
+        {
+            "id": 5,
+            "nome": "Eduardo Pires",
+            "cargo": "Supervisor de Turno",
+            "categoria": "supervisor",
+            "matricula": "2001",
+            "ativo": true,
+            "cartoes": [
+                {
+                    "id": 5,
+                    "uid": "7E8F9A0B",
+                    "ativo": true
+                }
+            ],
+            "categoriaRotulo": "Supervisor",
+            "presente": false
+        },
+        {
+            "id": 6,
+            "nome": "Fernanda Costa",
+            "cargo": "Supervisora de Qualidade",
+            "categoria": "supervisor",
+            "matricula": null,
+            "ativo": true,
+            "cartoes": [
+                {
+                    "id": 6,
+                    "uid": "C1D2E3F4",
+                    "ativo": true
+                }
+            ],
+            "categoriaRotulo": "Supervisor",
+            "presente": false
+        },
+        {
+            "id": 7,
+            "nome": "Gustavo Almeida",
+            "cargo": "Técnico de Manutenção",
+            "categoria": "prestador",
+            "matricula": null,
+            "ativo": true,
+            "cartoes": [
+                {
+                    "id": 7,
+                    "uid": "5A6B7C8D",
+                    "ativo": true
+                }
+            ],
+            "categoriaRotulo": "Prestador de Serviço",
+            "presente": false
+        },
+        {
+            "id": 4,
+            "nome": "Diego Martins",
+            "cargo": "Operador de Logística",
+            "categoria": "operador",
+            "matricula": "1004",
+            "ativo": false,
+            "cartoes": [
+                {
+                    "id": 4,
+                    "uid": "3A4B5C6D",
+                    "ativo": true
+                }
+            ],
+            "categoriaRotulo": "Operador",
+            "presente": false
+        }
+    ]
+}
