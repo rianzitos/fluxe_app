@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/models.dart';
+import 'ao_vivo.dart';
 import 'api_client.dart';
 
 /// Servidor de produção do SystemFluxe.
@@ -120,8 +121,15 @@ class AppController extends ChangeNotifier {
   Usuario? user;
   ThemeMode themeMode = ThemeMode.light;
 
-  /// Alertas atuais (badge do sino). Atualizados pela tela Painel.
+  /// Alertas atuais (badge do sino): os mesmos do sino do site. Atualizados pelo Painel, ao abrir o sino e
+  /// quando o tempo real avisa que algo mudou.
   List<Alerta> alertas = const [];
+
+  /// Atualizar as telas sozinho e avisar novos acessos (Configurações → Sistema). Vale para este aparelho.
+  bool aoVivoAtivo = true;
+
+  /// Tempo real (GET /api/aovivo). Quem liga e desliga é a estrutura principal do app (AppShell).
+  late final AoVivo aoVivo = AoVivo(() => _api);
 
   bool get isLoggedIn => _token != null && user != null;
 
@@ -147,6 +155,7 @@ class AppController extends ChangeNotifier {
 
     baseUrl = _prefs.getString('base_url') ?? defaultBaseUrl;
     themeMode = _themeFromName(_prefs.getString('tema'));
+    aoVivoAtivo = _prefs.getBool('ao_vivo') ?? true;
 
     try {
       _token = await _tokens.read();
@@ -199,6 +208,7 @@ class AppController extends ChangeNotifier {
     _token = null;
     user = null;
     alertas = const [];
+    aoVivo.reiniciar(continuar: false);
     _api = _buildApi();
     try {
       await _tokens.clear();
@@ -214,12 +224,19 @@ class AppController extends ChangeNotifier {
     await _prefs.setString('usuario', jsonEncode(u.toJson()));
   }
 
+  /// O perfil mudou no servidor (nome, e-mail, cargo ou foto em Configurações): mostra o novo em todo o app.
+  Future<void> atualizarUsuario(Usuario u) async {
+    await _saveUser(u);
+    notifyListeners();
+  }
+
   Future<void> setBaseUrl(String raw) async {
     final url = ApiClient.normalizeBaseUrl(raw);
     if (url.isEmpty || url == baseUrl) return;
     baseUrl = url;
     await _prefs.setString('base_url', url);
     _api = _buildApi();
+    aoVivo.reiniciar(); // outro servidor, outro estado (quem está na tela retoma)
     notifyListeners();
   }
 
@@ -229,9 +246,28 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setAoVivoAtivo(bool ativo) async {
+    aoVivoAtivo = ativo;
+    await _prefs.setBool('ao_vivo', ativo);
+    notifyListeners();
+  }
+
   void setAlertas(List<Alerta> list) {
     alertas = list;
     notifyListeners();
+  }
+
+  /// Busca os alertas do sino no servidor (GET /api/notificacoes). Em servidor antigo, sem a rota, continua
+  /// com os alertas que o Painel trouxe. Devolve a lista atual.
+  Future<List<Alerta>> atualizarAlertas() async {
+    if (!isLoggedIn) return alertas;
+    try {
+      final res = await _api.get('/notificacoes');
+      setAlertas((res['alertas'] as List? ?? const []).whereType<Map<String, dynamic>>().map(Alerta.fromJson).toList());
+    } on ApiException {
+      // sem rede ou servidor antigo: fica o que já estava
+    }
+    return alertas;
   }
 
   static ThemeMode _themeFromName(String? name) =>

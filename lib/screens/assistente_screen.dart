@@ -279,42 +279,51 @@ class _InputBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final pal = context.pal;
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       decoration: BoxDecoration(color: pal.background, border: Border(top: BorderSide(color: pal.border))),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              enabled: !sending,
-              maxLength: 300,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => onSend(),
-              style: TextStyle(color: pal.text, fontSize: 14.5),
-              decoration: InputDecoration(
-                counterText: '',
-                hintText: 'Digite sua pergunta...',
-                hintStyle: TextStyle(color: pal.textMuted),
-                filled: true,
-                fillColor: pal.card,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(26), borderSide: BorderSide(color: pal.border)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(26), borderSide: BorderSide(color: pal.border)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(26), borderSide: const BorderSide(color: AppColors.accent, width: 1.4)),
+      // SafeArea: se não houver nada embaixo do campo (barra de abas escondida com o teclado aberto, celular deitado,
+      // tablet), ele fica acima da barra de navegação do Android (voltar / início / apps abertos), nunca embaixo dela.
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  key: const Key('campo-pergunta'),
+                  controller: controller,
+                  enabled: !sending,
+                  maxLength: 300,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => onSend(),
+                  style: TextStyle(color: pal.text, fontSize: 14.5),
+                  decoration: InputDecoration(
+                    counterText: '',
+                    hintText: 'Digite sua pergunta...',
+                    hintStyle: TextStyle(color: pal.textMuted),
+                    filled: true,
+                    fillColor: pal.card,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(26), borderSide: BorderSide(color: pal.border)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(26), borderSide: BorderSide(color: pal.border)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(26), borderSide: const BorderSide(color: AppColors.accent, width: 1.4)),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Material(
+                color: AppColors.accent,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  key: const Key('btn-enviar-pergunta'),
+                  customBorder: const CircleBorder(),
+                  onTap: sending ? null : onSend,
+                  child: const SizedBox(width: 50, height: 50, child: Icon(Icons.send_rounded, color: Colors.black, size: 22)),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Material(
-            color: AppColors.accent,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: sending ? null : onSend,
-              child: const SizedBox(width: 50, height: 50, child: Icon(Icons.send_rounded, color: Colors.black, size: 22)),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

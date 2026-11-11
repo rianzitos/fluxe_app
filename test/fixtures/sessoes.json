@@ -1,0 +1,20 @@
+{
+  "sucesso": true,
+  "disponivel": true,
+  "sessoes": [
+    {
+      "id": 8,
+      "dispositivo": "Chrome · Android",
+      "celular": true,
+      "ip": "127.0.0.1",
+      "ultimo_acesso": "agora"
+    },
+    {
+      "id": 7,
+      "dispositivo": "Chrome · Windows",
+      "celular": false,
+      "ip": "127.0.0.1",
+      "ultimo_acesso": "agora"
+    }
+  ]
+}

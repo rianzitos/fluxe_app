@@ -1,0 +1,36 @@
+{
+  "sucesso": true,
+  "total": 5,
+  "alertas": [
+    {
+      "tipo": "aviso",
+      "titulo": "Acessos negados hoje",
+      "descricao": "3 tentativas de acesso foram negadas nas catracas hoje.",
+      "link": "/relatorios"
+    },
+    {
+      "tipo": "aviso",
+      "titulo": "Dispositivo sem sinal",
+      "descricao": "Catraca Principal: último sinal há 18 min.",
+      "link": "/configuracoes#integracoes"
+    },
+    {
+      "tipo": "aviso",
+      "titulo": "Dispositivo sem sinal",
+      "descricao": "Leitor do Refeitório: último sinal há 18 min.",
+      "link": "/configuracoes#integracoes"
+    },
+    {
+      "tipo": "info",
+      "titulo": "Maior movimento previsto",
+      "descricao": "Terça-feira (17/11): cerca de 42 pessoas.",
+      "link": "/assistente"
+    },
+    {
+      "tipo": "info",
+      "titulo": "Feriado: Consciência Negra",
+      "descricao": "Previsão de operação mínima em 20/11.",
+      "link": "/assistente"
+    }
+  ]
+}

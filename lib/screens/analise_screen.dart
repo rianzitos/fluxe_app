@@ -38,18 +38,30 @@ class _AnaliseScreenState extends State<AnaliseScreen> with TabRefresh {
     final data = AnaliseData.fromJson(res);
     _meses = data.meses;
     _mes = data.mes;
-    if (mounted) setState(() => _rotulo = data.mesRotulo);
+    // Corpo em bloco: com "=>" o callback devolveria o Future, e o Flutter (em debug e nos testes) recusa.
+    if (mounted) {
+      setState(() {
+        _rotulo = data.mesRotulo;
+      });
+    }
     return data;
   }
 
   @override
   void reload() {
-    if (mounted) setState(() => _future = _load());
+    // Corpo em bloco: com "=>" o callback devolveria o Future, e o Flutter (em debug e nos testes) recusa.
+    if (mounted) {
+      setState(() {
+        _future = _load();
+      });
+    }
   }
 
   Future<void> _refresh() async {
     final f = _load();
-    setState(() => _future = f);
+    setState(() {
+      _future = f;
+    });
     try {
       await f;
     } catch (_) {}

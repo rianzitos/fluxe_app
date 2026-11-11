@@ -11,7 +11,10 @@
 #   2. abre e continua rodando, sem travar (logcat limpo);
 #   3. entra com e-mail e senha pelo próprio app, falando com um servidor de mentira (tool/ci/mock_api.py)
 #      — prova que o HTTP liberado para testes, o login e o painel funcionam no release (R8/minificado);
-#   4. fecha e abre de novo: a sessão continua salva no cofre do Android (o app pede /api/me sozinho).
+#   4. fecha e abre de novo: a sessão continua salva no cofre do Android (o app pede /api/me sozinho);
+#   5. abre o chat do Assistente com a barra de navegação de 3 botões (voltar / início / apps abertos), mostra o
+#      teclado, digita e envia: o campo e o botão de enviar têm de ficar acima do teclado e da barra do sistema
+#      (no Android 15+ o app ocupa a tela inteira e é ele que precisa desviar dessas barras).
 # As capturas de tela e os logs ficam na pasta de saída (viram artefato do CI).
 set -u
 
@@ -92,8 +95,14 @@ adb wait-for-device
 adb shell wm dismiss-keyguard >/dev/null 2>&1                     # destrava a tela (sem mandar tecla ao launcher)
 aguardar_calma
 adb shell settings put secure show_ime_with_hard_keyboard 0 >/dev/null 2>&1
+# Barra de navegação de 3 botões (voltar / início / apps abertos), a que mais aparece nos celulares: é a que ocupa
+# mais espaço embaixo da tela, então é com ela que o app tem de provar que não esconde nada.
+adb shell cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.threebutton >/dev/null 2>&1 \
+  || adb shell cmd overlay enable com.android.internal.systemui.navbar.threebutton >/dev/null 2>&1
+sleep 3
 { echo "Android $(adb shell getprop ro.build.version.release | tr -d '\r') (API $(adb shell getprop ro.build.version.sdk | tr -d '\r')), $(adb shell getprop ro.product.cpu.abi | tr -d '\r')";
-  adb shell wm size; adb shell wm density; } | tee "$OUT/aparelho.txt"
+  adb shell wm size; adb shell wm density;
+  echo "navegação: $(adb shell cmd overlay list 2>/dev/null | grep -E '\[x\].*navbar' | sed 's/.*navbar\.//' | tr -d '\r' | head -1)"; } | tee "$OUT/aparelho.txt"
 read -r W H < <(grep -oE '[0-9]+x[0-9]+' "$OUT/aparelho.txt" | tail -1 | tr 'x' ' ')
 DENS=$(grep -oE 'density: [0-9]+' "$OUT/aparelho.txt" | tail -1 | grep -oE '[0-9]+')
 DENS=${DENS:-420}
@@ -188,6 +197,48 @@ sleep 12
 foto 06-reaberto
 if grep -q "REQ GET /api/me 200" "$OUT/mock.log"; then ok "reabriu já logado: o token estava salvo no cofre do Android (GET /api/me 200)"; else erro "ao reabrir o app não restaurou a sessão"; fi
 if python3 tool/ci/detectar_botao.py "$OUT/06-reaberto.png" >/dev/null 2>&1; then erro "voltou para a tela de login ao reabrir"; else ok "reabriu direto no app"; fi
+
+# ── 5) chat do Assistente com o teclado aberto ──────────────────────────────────
+# A aba "IA" é a 4ª de 5 na barra de abas. A altura da barra é medida pela pílula amarela da aba selecionada (Painel).
+ABAS_Y=$(python3 tool/ci/detectar_chat.py "$OUT/06-reaberto.png" abas 2>/dev/null)
+if [ -z "$ABAS_Y" ]; then
+  erro "não achei a barra de abas (pílula amarela) depois de reabrir o app"
+else
+  toque $((W * 7 / 10)) "$ABAS_Y"; sleep 6                          # aba IA
+  foto 07-assistente
+  if grep -q "REQ GET /api/assistente 200" "$OUT/mock.log"; then ok "abriu o Assistente (GET /api/assistente 200)"; else erro "a aba IA não abriu o Assistente"; fi
+  if read -r ENV_TOPO ENV_BASE < <(python3 tool/ci/detectar_chat.py "$OUT/07-assistente.png" enviar); then
+    if [ "$ENV_BASE" -lt "$ABAS_Y" ]; then ok "sem teclado, o botão de enviar fica acima da barra de abas (base ${ENV_BASE} < ${ABAS_Y})"; else erro "sem teclado, o botão de enviar está sobre a barra de abas (base ${ENV_BASE}, abas ${ABAS_Y})"; fi
+    # toca no campo de texto, que fica à esquerda do botão de enviar, na mesma altura
+    adb shell settings put secure show_ime_with_hard_keyboard 1 >/dev/null 2>&1   # o emulador tem teclado físico: força o virtual
+    toque $((W * 4 / 10)) $(((ENV_TOPO + ENV_BASE) / 2)); sleep 4
+    adb shell input text 'previsao%spara%samanha'; sleep 2
+    adb shell dumpsys input_method 2>/dev/null | grep -E "mInputShown|mImeWindowVis" | head -2 > "$OUT/teclado-chat.txt"
+    foto 08-chat-teclado
+    # topo do teclado: a janela do InputMethod (o "frame" dela) na tela
+    IME_TOPO=$(adb shell dumpsys window windows 2>/dev/null | tr -d '\r' | awk '/Window\{[^}]*InputMethod\}/{f=1} f && /mFrame=|frame=/{print; exit}' \
+      | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' | head -1 | sed -E 's/\[[0-9]+,([0-9]+)\].*/\1/')
+    if grep -q "mInputShown=true" "$OUT/teclado-chat.txt"; then ok "o teclado abriu no chat"; else info "o Android não confirmou o teclado aberto (veja teclado-chat.txt e 08-chat-teclado.png)"; fi
+    if read -r ENV_TOPO2 ENV_BASE2 < <(python3 tool/ci/detectar_chat.py "$OUT/08-chat-teclado.png" enviar); then
+      if [ -n "$IME_TOPO" ] && [ "$IME_TOPO" -gt 0 ]; then
+        if [ "$ENV_BASE2" -le "$IME_TOPO" ]; then ok "com o teclado aberto, o campo e o botão de enviar ficam acima do teclado (base ${ENV_BASE2} ≤ topo do teclado ${IME_TOPO})"
+        else erro "com o teclado aberto, o botão de enviar ficou embaixo do teclado/barra (base ${ENV_BASE2} > topo do teclado ${IME_TOPO})"; fi
+      else
+        info "não consegui ler o topo do teclado no dumpsys; botão de enviar em ${ENV_TOPO2}-${ENV_BASE2} (confira 08-chat-teclado.png)"
+      fi
+      if [ "$ENV_BASE2" -lt "$((H - $(dp 48)))" ]; then ok "o botão de enviar não está na faixa da barra de navegação do sistema"; else erro "o botão de enviar está na faixa da barra de navegação do sistema"; fi
+    else
+      erro "com o teclado aberto, o botão de enviar sumiu da tela (coberto pelo teclado ou pela barra?)"
+    fi
+    adb shell input keyevent 66; sleep 5                             # ENTER envia a pergunta
+    foto 09-chat-resposta
+    if grep -q "REQ POST /api/assistente 200" "$OUT/mock.log"; then ok "a pergunta digitada foi enviada (POST /api/assistente 200)"; else erro "a pergunta digitada não foi enviada"; fi
+    adb shell input keyevent 4; sleep 2                              # VOLTAR fecha o teclado
+    foto 10-chat-sem-teclado
+  else
+    erro "não achei o botão de enviar do chat na tela"
+  fi
+fi
 
 adb logcat -d > "$OUT/logcat.txt"
 if grep -E "FATAL EXCEPTION" "$OUT/logcat.txt" | head -1 | grep -q .; then erro "travamento no logcat durante o teste"; fi

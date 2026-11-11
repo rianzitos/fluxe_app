@@ -1,0 +1,63 @@
+{
+  "sucesso": true,
+  "notificacoes": [
+    {
+      "chave": "previsao_demanda",
+      "label": "Alertas de previsão de demanda",
+      "descricao": "Desperdício acima da meta, picos de movimento e feriados que mudam a previsão",
+      "disponivel": true,
+      "ativo": true
+    },
+    {
+      "chave": "acesso_negado",
+      "label": "Tentativas de acesso não autorizado",
+      "descricao": "Avisa no sino e no painel quando uma catraca negar acessos hoje",
+      "disponivel": true,
+      "ativo": true
+    },
+    {
+      "chave": "dispositivo_offline",
+      "label": "Dispositivo IoT offline",
+      "descricao": "Avisa quando uma catraca ou leitor parar de responder",
+      "disponivel": true,
+      "ativo": true
+    },
+    {
+      "chave": "resumo_diario",
+      "label": "Resumo diário por e-mail",
+      "descricao": "Um e-mail às 08h com o resumo do dia anterior",
+      "disponivel": false,
+      "ativo": false
+    }
+  ],
+  "sistema": {
+    "periodo_padrao": "mes",
+    "itens_pagina": 20
+  },
+  "opcoes": {
+    "periodos": [
+      {
+        "valor": "mes",
+        "rotulo": "Este mês"
+      },
+      {
+        "valor": "7",
+        "rotulo": "Últimos 7 dias"
+      },
+      {
+        "valor": "30",
+        "rotulo": "Últimos 30 dias"
+      },
+      {
+        "valor": "90",
+        "rotulo": "Últimos 90 dias"
+      }
+    ],
+    "itensPagina": [
+      10,
+      20,
+      50
+    ],
+    "fuso": "Horário de Brasília (GMT-3)"
+  }
+}

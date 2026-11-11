@@ -4,8 +4,10 @@ import '../core/app_state.dart';
 import '../core/layout.dart';
 import '../core/theme.dart';
 import '../models/models.dart';
+import 'navegacao.dart';
 
-/// Cabeçalho das telas: menu, título + subtítulo, ações e sino de alertas.
+/// Cabeçalho das telas: menu, título + subtítulo, ações, atalho dos dispositivos IoT e sino de alertas
+/// (os atalhos do canto direito do cabeçalho do site).
 class PageHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -57,7 +59,8 @@ class PageHeader extends StatelessWidget {
             ),
           ),
           ...actions,
-          if (showBell) ...[const SizedBox(width: 8), const AlertBell()],
+          if (showBell && ShellNavegacao.maybeOf(context) != null) const IotAtalho(),
+          if (showBell) ...[const SizedBox(width: 4), const AlertBell()],
         ],
       ),
     );
@@ -74,7 +77,7 @@ class AlertBell extends StatelessWidget {
     final alertas = AppScope.of(context).alertas;
     return InkWell(
       customBorder: const CircleBorder(),
-      onTap: () => showAlertsSheet(context, alertas),
+      onTap: () => abrirNotificacoes(context),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -119,12 +122,15 @@ class AlertBell extends StatelessWidget {
 /// Item de alerta colorido (Painel e lista do sino).
 class AlertTile extends StatelessWidget {
   final Alerta alerta;
-  const AlertTile(this.alerta, {super.key});
+
+  /// Leva para a tela do assunto (sino); null = só mostra (lista do Painel).
+  final VoidCallback? onTap;
+  const AlertTile(this.alerta, {super.key, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final s = estiloAlerta(context, alerta.tipo);
-    return Container(
+    final conteudo = Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(color: s.bg, borderRadius: BorderRadius.circular(12)),
       child: Row(
@@ -142,33 +148,107 @@ class AlertTile extends StatelessWidget {
               ],
             ),
           ),
+          if (onTap != null) ...[
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right_rounded, color: context.pal.textMuted, size: 20),
+          ],
         ],
       ),
+    );
+    if (onTap == null) return conteudo;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(borderRadius: BorderRadius.circular(12), onTap: onTap, child: conteudo),
     );
   }
 }
 
-void showAlertsSheet(BuildContext context, List<Alerta> alertas) {
+/// Atalho "IoT" do cabeçalho (como no site): abre Configurações direto na aba Integrações.
+class IotAtalho extends StatelessWidget {
+  const IotAtalho({super.key});
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+        tooltip: 'Dispositivos IoT (catracas e balanças)',
+        onPressed: () => ShellNavegacao.maybeOf(context)?.abrirConfiguracoes(AbaConfig.integracoes),
+        icon: Icon(Icons.sensors_rounded, color: context.pal.text),
+      );
+}
+
+/// Painel do sino: os alertas do servidor (previsão + catracas, conforme as preferências da conta). Tocar num
+/// alerta leva para a tela onde o assunto é tratado, como no site.
+void abrirNotificacoes(BuildContext context) {
+  final app = AppScope.read(context);
+  final nav = ShellNavegacao.maybeOf(context);
+  final atualizando = app.atualizarAlertas();
+
+  void ir(BuildContext ctx, VoidCallback acao) {
+    Navigator.pop(ctx);
+    acao();
+  }
+
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: context.pal.background,
     showDragHandle: true,
     isScrollControlled: true,
+    useSafeArea: true,
+    constraints: const BoxConstraints(maxWidth: 640),
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
     builder: (ctx) => SafeArea(
+      top: false,
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.7),
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-          children: [
-            Text('Alertas e Recomendações', style: AppText.title(ctx, size: 18)),
-            const SizedBox(height: 14),
-            if (alertas.isEmpty)
-              Text('Nenhum alerta no momento. Tudo dentro do esperado.', style: AppText.muted(ctx, size: 14))
-            else
-              for (final a in alertas) ...[AlertTile(a), const SizedBox(height: 10)],
-          ],
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.75),
+        child: FutureBuilder<List<Alerta>>(
+          future: atualizando,
+          initialData: app.alertas,
+          builder: (ctx, snap) {
+            final alertas = snap.data ?? const <Alerta>[];
+            final carregando = snap.connectionState != ConnectionState.done;
+            return ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: Text('Notificações', style: AppText.title(ctx, size: 18))),
+                    if (nav != null)
+                      TextButton.icon(
+                        onPressed: () => ir(ctx, () => nav.abrirConfiguracoes(AbaConfig.notificacoes)),
+                        icon: const Icon(Icons.tune_rounded, size: 18),
+                        label: const Text('Preferências'),
+                      ),
+                  ],
+                ),
+                if (carregando) const LinearProgressIndicator(minHeight: 2, color: AppColors.accent, backgroundColor: Colors.transparent),
+                const SizedBox(height: 10),
+                if (alertas.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(carregando ? 'Carregando alertas…' : 'Nenhum alerta no momento. Tudo dentro do esperado.',
+                        style: AppText.muted(ctx, size: 14)),
+                  )
+                else
+                  for (final a in alertas) ...[
+                    AlertTile(
+                      a,
+                      onTap: nav == null ? null : () => ir(ctx, () => nav.abrirLink(a.link ?? '/assistente')),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                if (nav != null)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () => ir(ctx, () => nav.abrirLink('/assistente')),
+                      iconAlignment: IconAlignment.end,
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                      label: const Text('Ver recomendações do assistente'),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
     ),

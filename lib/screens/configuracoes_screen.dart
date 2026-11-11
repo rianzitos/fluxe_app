@@ -4,179 +4,122 @@ import '../core/api_client.dart';
 import '../core/app_state.dart';
 import '../core/layout.dart';
 import '../core/theme.dart';
+import '../core/versao.dart';
 import '../widgets/common.dart';
+import '../widgets/navegacao.dart';
 import '../widgets/page_header.dart';
 import 'app_shell.dart';
+import 'config_conta.dart';
+import 'config_integracoes.dart';
+import 'config_preferencias.dart';
 
-/// Configurações: perfil (somente leitura), aparência, servidor e sair.
+/// Configurações, com as mesmas abas do site: Perfil, Aparência, Notificações, Sistema, Integrações (dispositivos
+/// IoT) e Segurança, mais a aba Aplicativo (servidor, versão e sair). Tudo fala com o mesmo banco do site.
 class ConfiguracoesScreen extends StatelessWidget {
-  const ConfiguracoesScreen({super.key});
+  final AbaConfig abaInicial;
+  const ConfiguracoesScreen({super.key, this.abaInicial = AbaConfig.perfil});
 
-  @override
-  Widget build(BuildContext context) {
-    final app = AppScope.of(context);
-    final user = app.user;
-
-    return Scaffold(
-      body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: kContentMaxWidth),
-            child: Column(
-              children: [
-                const PageHeader(title: 'Configurações', subtitle: 'Perfil, aparência e conexão', showBell: false),
-                Expanded(
-                  child: PageList(children: [
-                    if (user != null) _PerfilCard(app),
-                    _TemaCard(app),
-                    _ServidorCard(app),
-                    _SobreCard(),
-                    FilledButton.icon(
-                      onPressed: () async {
-                        final ok = await confirmLogout(context);
-                        if (ok && context.mounted) {
-                          Navigator.of(context).popUntil((r) => r.isFirst);
-                          await app.logout();
-                        }
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.black,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      icon: const Icon(Icons.logout_rounded, color: AppColors.accent),
-                      label: const Text('Sair da conta', style: TextStyle(fontWeight: FontWeight.w600)),
-                    ),
-                  ]),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PerfilCard extends StatelessWidget {
-  final AppController app;
-  const _PerfilCard(this.app);
-
-  @override
-  Widget build(BuildContext context) {
-    final u = app.user!;
-    final e = u.empresa;
-    final local = [e.cidade, e.estado].where((s) => s != null && s.isNotEmpty).join(' - ');
-
-    Widget linha(IconData icon, String label, String? valor) => (valor == null || valor.isEmpty)
-        ? const SizedBox.shrink()
-        : Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Row(
-              children: [
-                Icon(icon, size: 19, color: context.pal.textMuted),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(label, style: AppText.muted(context, size: 12)),
-                      Text(valor, style: AppText.strong(context, size: 14.5)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const CardTitle('Informações Pessoais'),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              UserAvatar(u.nome, u.foto, radius: 30),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(u.nome, style: AppText.title(context, size: 18)),
-                    const SizedBox(height: 4),
-                    Pill(u.perfilRotulo, background: context.pal.accentSoft, foreground: AppColors.accentText),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          linha(Icons.mail_outline_rounded, 'E-mail', u.email),
-          linha(Icons.badge_outlined, 'Cargo', u.cargo),
-          linha(Icons.phone_outlined, 'Telefone', u.telefone),
-          linha(Icons.numbers_rounded, 'Matrícula', u.matricula),
-          linha(Icons.apartment_rounded, 'Instituição', e.nome),
-          linha(Icons.location_on_outlined, 'Localidade', local),
-          linha(Icons.schedule_rounded, 'Horário de funcionamento', e.horario),
-        ],
-      ),
-    );
-  }
-}
-
-class _TemaCard extends StatelessWidget {
-  final AppController app;
-  const _TemaCard(this.app);
+  static const _abas = [
+    (AbaConfig.perfil, 'Perfil', Icons.person_outline_rounded),
+    (AbaConfig.aparencia, 'Aparência', Icons.palette_outlined),
+    (AbaConfig.notificacoes, 'Notificações', Icons.notifications_none_rounded),
+    (AbaConfig.sistema, 'Sistema', Icons.tune_rounded),
+    (AbaConfig.integracoes, 'Integrações', Icons.sensors_rounded),
+    (AbaConfig.seguranca, 'Segurança', Icons.shield_outlined),
+    (AbaConfig.aplicativo, 'Aplicativo', Icons.phone_android_rounded),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final pal = context.pal;
-    Widget opcao(ThemeMode mode, String label, IconData icon) {
-      final ativo = app.themeMode == mode;
-      return Expanded(
-        child: GestureDetector(
-          onTap: () => app.setThemeMode(mode),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            decoration: BoxDecoration(
-              color: ativo ? pal.accentSoft : pal.chip,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: ativo ? AppColors.accent : pal.border, width: ativo ? 1.6 : 1),
-            ),
-            child: Column(
-              children: [
-                Icon(icon, color: ativo ? AppColors.accent : pal.textMuted),
-                const SizedBox(height: 6),
-                Text(label, style: AppText.strong(context, size: 13)),
-              ],
+    return DefaultTabController(
+      length: _abas.length,
+      initialIndex: abaInicial.index,
+      child: Scaffold(
+        body: SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: kContentMaxWidth),
+              child: Column(
+                children: [
+                  const PageHeader(
+                    title: 'Configurações',
+                    subtitle: 'Preferências, integrações e segurança',
+                    showBell: false,
+                  ),
+                  TabBar(
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    labelColor: pal.text,
+                    unselectedLabelColor: pal.textMuted,
+                    labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                    unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13.5),
+                    indicatorColor: AppColors.accent,
+                    indicatorWeight: 3,
+                    dividerColor: pal.border,
+                    tabs: [
+                      for (final (aba, rotulo, icone) in _abas)
+                        Tab(key: Key('aba-${aba.name}'), height: 46, icon: null, child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [Icon(icone, size: 18), const SizedBox(width: 6), Text(rotulo)],
+                        )),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Expanded(
+                    child: TabBarView(
+                      children: [
+                        PerfilTab(),
+                        AparenciaTab(),
+                        NotificacoesTab(),
+                        SistemaTab(),
+                        IntegracoesTab(),
+                        SegurancaTab(),
+                        _AplicativoTab(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      );
-    }
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const CardTitle('Aparência'),
-          const SizedBox(height: 4),
-          Text('Tema', style: AppText.muted(context)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              opcao(ThemeMode.light, 'Claro', Icons.light_mode_rounded),
-              opcao(ThemeMode.dark, 'Escuro', Icons.dark_mode_rounded),
-              opcao(ThemeMode.system, 'Sistema', Icons.brightness_auto_rounded),
-            ],
-          ),
-        ],
       ),
     );
+  }
+}
+
+/// Servidor, versão do app e sair da conta.
+class _AplicativoTab extends StatelessWidget {
+  const _AplicativoTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final app = AppScope.of(context);
+    return PageList(children: [
+      _ServidorCard(app),
+      _SobreCard(),
+      FilledButton.icon(
+        key: const Key('btn-sair-config'),
+        onPressed: () async {
+          final ok = await confirmLogout(context);
+          if (ok && context.mounted) {
+            Navigator.of(context).popUntil((r) => r.isFirst);
+            await app.logout();
+          }
+        },
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.black,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        icon: const Icon(Icons.logout_rounded, color: AppColors.accent),
+        label: const Text('Sair da conta', style: TextStyle(fontWeight: FontWeight.w600)),
+      ),
+    ]);
   }
 }
 
@@ -287,8 +230,8 @@ class _SobreCard extends StatelessWidget {
                 children: [
                   Text('SICAPDA by Fluxe', style: AppText.strong(context, size: 15)),
                   const SizedBox(height: 2),
-                  Text('Sistema Inteligente de Controle de Acesso e Previsão de Demanda Alimentar · v1.0.0',
-                      style: AppText.muted(context, size: 12.5)),
+                  Text('Sistema Inteligente de Controle de Acesso e Previsão de Demanda Alimentar · versão $kVersaoApp',
+                      key: const Key('versao-app'), style: AppText.muted(context, size: 12.5)),
                 ],
               ),
             ),

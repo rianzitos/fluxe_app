@@ -1,0 +1,11 @@
+{
+  "sucesso": true,
+  "mensagem": "Cartão não cadastrado.",
+  "resultado": {
+    "autorizado": false,
+    "motivo": "cartao_desconhecido",
+    "uid": "CAFE0002",
+    "mensagem": "Cartão não cadastrado."
+  },
+  "uid": "CAFE0002"
+}

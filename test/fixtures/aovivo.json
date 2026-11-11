@@ -1,0 +1,42 @@
+{
+  "sucesso": true,
+  "assinatura": "5c86ab7801bc5fe40023bfdfd47a3e60",
+  "ultimoLog": 9356,
+  "eventos": [
+    {
+      "id": 9356,
+      "direcao": "entrada",
+      "resultado": "autorizado",
+      "nome": "Maria Santos",
+      "hora": "22:12"
+    }
+  ],
+  "novosAcessos": 1,
+  "dispositivos": [
+    {
+      "id": 22,
+      "nome": "Balança da Cozinha",
+      "status": "online",
+      "ultimo_sinal": "Último sinal agora"
+    },
+    {
+      "id": 1,
+      "nome": "Catraca Principal",
+      "status": "offline",
+      "ultimo_sinal": "Último sinal há 18 min"
+    },
+    {
+      "id": 2,
+      "nome": "Leitor do Refeitório",
+      "status": "offline",
+      "ultimo_sinal": "Último sinal há 18 min"
+    }
+  ],
+  "pesagens": [
+    {
+      "tipo": "almoco",
+      "rotulo": "Almoço",
+      "kg": 3.4
+    }
+  ]
+}

@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../core/app_state.dart';
 import '../core/layout.dart';
 import '../core/theme.dart';
+import '../models/models.dart';
+import '../widgets/navegacao.dart';
 import '../widgets/sicapda_logo.dart';
 import 'analise_screen.dart';
 import 'assistente_screen.dart';
@@ -27,6 +31,9 @@ const _destinos = [
 ];
 
 /// Estrutura principal: menu lateral escuro (igual à sidebar da web) + barra de abas.
+///
+/// Também liga o tempo real (como o "Ao vivo" do site): enquanto o app está aberto na tela, a aba visível se
+/// atualiza sozinha quando algo muda na empresa, o sino acompanha e os acessos novos aparecem num aviso rápido.
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -34,18 +41,113 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _visited = <int>{0};
   final _ticks = List.generate(_destinos.length, (_) => ValueNotifier<int>(0));
   int _index = 0;
 
+  late final AppController _app = AppScope.read(context);
+  StreamSubscription<({List<EventoAcesso> eventos, int total})>? _avisos;
+  bool _emPrimeiroPlano = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _app.addListener(_sincronizarAoVivo);
+    _app.aoVivo.mudancas.addListener(_algoMudou);
+    _avisos = _app.aoVivo.eventos.listen(_avisarAcessos);
+    _sincronizarAoVivo();
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _app.removeListener(_sincronizarAoVivo);
+    _app.aoVivo.mudancas.removeListener(_algoMudou);
+    _avisos?.cancel();
+    _app.aoVivo.pausar();
     for (final t in _ticks) {
       t.dispose();
     }
     super.dispose();
+  }
+
+  // ─── Tempo real ────────────────────────────────────────────────────────
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Em segundo plano (ou com a tela apagada) não consulta nada; ao voltar, consulta na hora.
+    _emPrimeiroPlano = state == AppLifecycleState.resumed;
+    _sincronizarAoVivo();
+  }
+
+  /// Liga ou desliga as consultas conforme a preferência (Configurações → Sistema) e o app estar na tela.
+  void _sincronizarAoVivo() {
+    final aoVivo = _app.aoVivo;
+    if (_app.aoVivoAtivo && _emPrimeiroPlano && _app.isLoggedIn) {
+      aoVivo.retomar();
+    } else {
+      aoVivo.pausar();
+    }
+  }
+
+  /// Algo mudou na empresa: atualiza a aba visível (as outras se atualizam ao serem abertas) e o sino.
+  void _algoMudou() {
+    if (!mounted) return;
+    _ticks[_index].value++;
+    _app.atualizarAlertas();
+  }
+
+  void _avisarAcessos(({List<EventoAcesso> eventos, int total}) novos) {
+    if (!mounted || novos.eventos.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final ultimo = novos.eventos.last;
+    final outros = novos.total - 1;
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(SnackBar(
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 4),
+      content: Row(
+        children: [
+          Icon(
+            ultimo.negado ? Icons.block_rounded : (ultimo.direcao == 'saida' ? Icons.logout_rounded : Icons.login_rounded),
+            color: ultimo.negado ? const Color(0xFFFCA5A5) : AppColors.accent,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(outros > 0 ? '${ultimo.texto} (+$outros ${outros == 1 ? 'acesso' : 'acessos'})' : ultimo.texto),
+          ),
+        ],
+      ),
+      action: SnackBarAction(
+        label: 'Ver',
+        textColor: AppColors.accent,
+        onPressed: () => _abrirLink(ultimo.negado ? '/relatorios' : '/pessoas'),
+      ),
+    ));
+  }
+
+  // ─── Navegação ─────────────────────────────────────────────────────────
+
+  /// Destino de um alerta, no formato do site ("/relatorios", "/configuracoes#integracoes"...).
+  void _abrirLink(String link) {
+    final caminho = link.split('#').first.split('?').first;
+    final aba = switch (caminho) {
+      '/painel' => 0,
+      '/acessos' => 1,
+      '/pessoas' => 2,
+      '/assistente' => 3,
+      '/relatorios' => 4,
+      _ => null,
+    };
+    if (aba != null) {
+      _select(aba);
+    } else if (caminho == '/configuracoes') {
+      _openConfig(abaDoLink(link));
+    }
   }
 
   void _select(int i) {
@@ -70,14 +172,23 @@ class _AppShellState extends State<AppShell> {
     };
   }
 
-  void _openConfig() {
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ConfiguracoesScreen()));
+  void _openConfig([AbaConfig aba = AbaConfig.perfil]) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ConfiguracoesScreen(abaInicial: aba)));
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ShellNavegacao(
+        abrirLink: _abrirLink,
+        abrirConfiguracoes: _openConfig,
+        child: _estrutura(context),
+      );
+
+  Widget _estrutura(BuildContext context) {
+    final largo = isWide(context);
     final conteudo = SafeArea(
-      bottom: false,
+      // No celular a barra de abas fica embaixo e já respeita a barra do sistema. Sem ela (PC, tablet ou celular
+      // deitado), o conteúdo não pode ir até a borda: o campo do chat ficaria embaixo da barra de navegação do Android.
+      bottom: largo,
       child: IndexedStack(
         index: _index,
         children: [for (var i = 0; i < _destinos.length; i++) _page(i)],
@@ -85,7 +196,7 @@ class _AppShellState extends State<AppShell> {
     );
 
     // PC / tablet deitado: menu lateral sempre visível (igual ao painel web), sem barra de abas.
-    if (isWide(context)) {
+    if (largo) {
       return Scaffold(
         key: _scaffoldKey,
         body: Row(
@@ -119,7 +230,9 @@ class _AppShellState extends State<AppShell> {
         },
       ),
       body: conteudo,
-      bottomNavigationBar: NavigationBar(
+      // Com o teclado aberto (ex.: escrevendo no chat do assistente) a barra de abas sai de cena: sobra espaço
+      // para a conversa e o campo de texto fica logo acima do teclado.
+      bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0 ? null : NavigationBar(
         selectedIndex: _index,
         height: 66,
         onDestinationSelected: _select,

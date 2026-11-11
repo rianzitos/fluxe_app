@@ -4,15 +4,18 @@ import 'package:flutter/material.dart';
 import '../core/api_client.dart';
 import '../core/app_state.dart';
 import '../core/cadastro_service.dart';
+import '../core/config_service.dart';
 import '../core/format.dart';
 import '../core/theme.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
 import 'cadastro_formularios.dart';
+import 'cadastro_importar.dart';
 
 /// Aba Cadastro de Pessoas: quem está cadastrado e com quais cartões. O administrador da empresa adiciona e edita
 /// pessoas, vincula cartões (passando o cartão numa catraca, ele aparece na lista para escolher), ativa/desativa
-/// pessoas e cartões e remove cartões; os demais usuários só consultam. As regras são as do site, no servidor.
+/// pessoas e cartões, remove cartões e importa planilha (CSV); os demais usuários só consultam. As regras são as do
+/// site, no servidor.
 class CadastroPessoasTab extends StatefulWidget {
   final ValueListenable<int> tabRefresh;
 
@@ -141,6 +144,12 @@ class _CadastroPessoasTabState extends State<CadastroPessoasTab> with TabRefresh
         onSalvo: _salvo,
       );
 
+  void _importar() => abrirImportarPlanilha(
+        context,
+        servico: ConfigService(AppScope.read(context).api),
+        onImportado: _salvo,
+      );
+
   void _vincular(PessoaCadastro p) => abrirVincularCartao(
         context,
         servico: _servico,
@@ -189,7 +198,7 @@ class _CadastroPessoasTabState extends State<CadastroPessoasTab> with TabRefresh
       onRetry: reload,
       builder: (context, d) => Column(
         children: [
-          _Topo(data: d, busca: _busca, onAdicionar: () => _adicionar(d)),
+          _Topo(data: d, busca: _busca, onAdicionar: () => _adicionar(d), onImportar: _importar),
           Expanded(
             child: ListenableBuilder(
               listenable: _busca,
@@ -237,7 +246,8 @@ class _Topo extends StatelessWidget {
   final CadastroData data;
   final TextEditingController busca;
   final VoidCallback onAdicionar;
-  const _Topo({required this.data, required this.busca, required this.onAdicionar});
+  final VoidCallback onImportar;
+  const _Topo({required this.data, required this.busca, required this.onAdicionar, required this.onImportar});
 
   @override
   Widget build(BuildContext context) {
@@ -264,7 +274,19 @@ class _Topo extends StatelessWidget {
             children: [
               Expanded(child: resumo),
               if (data.podeEditar) ...[
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
+                IconButton.outlined(
+                  key: const Key('btn-importar-planilha'),
+                  tooltip: 'Importar planilha (CSV)',
+                  onPressed: onImportar,
+                  style: IconButton.styleFrom(
+                    side: BorderSide(color: pal.border),
+                    padding: const EdgeInsets.all(11),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  icon: Icon(Icons.upload_file_rounded, color: pal.text, size: 21),
+                ),
+                const SizedBox(width: 8),
                 FilledButton.icon(
                   key: const Key('btn-adicionar-pessoa'),
                   onPressed: onAdicionar,

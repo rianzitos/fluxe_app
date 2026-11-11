@@ -1,0 +1,99 @@
+{
+  "sucesso": true,
+  "podeEditar": true,
+  "dispositivos": [
+    {
+      "id": 22,
+      "nome": "Balança da Cozinha",
+      "tipo": "balanca",
+      "tipo_rotulo": "Balança de desperdício",
+      "localizacao": "Refeitório",
+      "token": "f96f40…41e2",
+      "status": "online",
+      "ultimo_ping": "2026-11-10 22:12:38",
+      "ultimo_sinal": "Último sinal agora"
+    },
+    {
+      "id": 1,
+      "nome": "Catraca Principal",
+      "tipo": "rfid",
+      "tipo_rotulo": "Cartão RFID",
+      "localizacao": "Portaria principal",
+      "token": "demo-c…al-1",
+      "status": "offline",
+      "ultimo_ping": "2026-11-10 21:54:11",
+      "ultimo_sinal": "Último sinal há 18 min"
+    },
+    {
+      "id": 2,
+      "nome": "Leitor do Refeitório",
+      "tipo": "hibrido",
+      "tipo_rotulo": "RFID + biometria",
+      "localizacao": "Refeitório",
+      "token": "demo-l…io-1",
+      "status": "offline",
+      "ultimo_ping": "2026-11-10 21:54:11",
+      "ultimo_sinal": "Último sinal há 18 min"
+    }
+  ],
+  "tipos": [
+    {
+      "valor": "rfid",
+      "rotulo": "Cartão RFID"
+    },
+    {
+      "valor": "biometria",
+      "rotulo": "Biometria"
+    },
+    {
+      "valor": "hibrido",
+      "rotulo": "RFID + biometria"
+    },
+    {
+      "valor": "balanca",
+      "rotulo": "Balança de desperdício"
+    }
+  ],
+  "refeicoes": [
+    {
+      "valor": "cafe",
+      "rotulo": "Café da manhã"
+    },
+    {
+      "valor": "almoco",
+      "rotulo": "Almoço"
+    },
+    {
+      "valor": "jantar",
+      "rotulo": "Jantar"
+    },
+    {
+      "valor": "ceia",
+      "rotulo": "Ceia"
+    }
+  ],
+  "desperdicioHoje": [
+    {
+      "tipo": "cafe",
+      "rotulo": "Café da manhã",
+      "kg": null
+    },
+    {
+      "tipo": "almoco",
+      "rotulo": "Almoço",
+      "kg": 3.4
+    },
+    {
+      "tipo": "jantar",
+      "rotulo": "Jantar",
+      "kg": null
+    },
+    {
+      "tipo": "ceia",
+      "rotulo": "Ceia",
+      "kg": null
+    }
+  ],
+  "data": "2026-11-10",
+  "segundosOffline": 180
+}
