@@ -160,6 +160,8 @@ void main() {
     test('CSV do Excel em Windows-1252 não perde os acentos', () {
       expect(textoDoCsv(Uint8List.fromList(utf8.encode('nome;cargo\nJosé;Operário'))), 'nome;cargo\nJosé;Operário');
       expect(textoDoCsv(Uint8List.fromList(latin1.encode('nome;cargo\nJosé;Operário'))), 'nome;cargo\nJosé;Operário');
+      // aspas curvas e travessão do Windows-1252 (0x93, 0x94, 0x96)
+      expect(textoDoCsv(Uint8List.fromList([0x93, 0x41, 0x94, 0x20, 0x96, 0x20, 0xC9])), '“A” – É');
     });
   });
 
@@ -602,6 +604,14 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
       expect(pedidos(log, 'GET', '/api/aovivo'), antes + 1);
+
+      // janela sem foco no PC ("inactive"): o app continua à vista, então segue atualizando
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump(const Duration(seconds: 9));
+      await tester.pump();
+      expect(pedidos(log, 'GET', '/api/aovivo'), antes + 2);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
     });
   });
 
@@ -633,6 +643,23 @@ void main() {
 
       await tocar(tester, find.byKey(const Key('btn-concluir-importacao')));
       expect(find.text('Importar planilha'), findsNothing);
+    });
+
+    testWidgets('planilha do Excel (.xlsx) é recusada com a explicação de como salvar em CSV', (tester) async {
+      final log = <http.Request>[];
+      await abrirApp(tester, fakeApi(log: log));
+      await tester.tap(find.text('Pessoas').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('aba-pessoas-1')));
+      await tester.pumpAndSettle();
+
+      escolherArquivo = ({required bool imagem}) async => (nome: 'Pessoas.XLSX', bytes: Uint8List(10));
+      await tocar(tester, find.byKey(const Key('btn-importar-planilha')));
+      await tocar(tester, find.byKey(const Key('btn-escolher-planilha')));
+      expect(find.textContaining('Escolha um arquivo .csv'), findsOneWidget);
+      expect(pedidos(log, 'POST', '/api/pessoas/importar'), 0);
+      expect(extensaoDePlanilha('lista.CSV'), isTrue);
+      expect(extensaoDePlanilha('lista.txt'), isTrue);
     });
 
     testWidgets('arquivo grande demais é barrado antes de enviar', (tester) async {

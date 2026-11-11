@@ -78,8 +78,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Em segundo plano (ou com a tela apagada) não consulta nada; ao voltar, consulta na hora.
-    _emPrimeiroPlano = state == AppLifecycleState.resumed;
+    // Em segundo plano (ou com a tela apagada) não consulta nada; ao voltar, consulta na hora. "inactive" não pausa:
+    // no PC é só a janela sem foco (o app continua à vista), e no celular passa rápido (ex.: puxar as notificações).
+    _emPrimeiroPlano = state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
     _sincronizarAoVivo();
   }
 

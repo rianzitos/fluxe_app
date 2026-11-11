@@ -55,7 +55,10 @@ class _ImportarPlanilhaState extends State<_ImportarPlanilha> {
     if (arquivo == null || !mounted) return;
     setState(() {
       _resultado = null;
-      if (arquivo.bytes.length > kTamanhoMaxPlanilha) {
+      if (!extensaoDePlanilha(arquivo.nome)) {
+        _arquivo = null;
+        _erro = 'Escolha um arquivo .csv (no Excel: Arquivo → Salvar como → CSV). Planilhas .xlsx não são aceitas.';
+      } else if (arquivo.bytes.length > kTamanhoMaxPlanilha) {
         _arquivo = null;
         _erro = 'O arquivo passa de 1 MB. Divida a planilha em partes menores.';
       } else if (arquivo.bytes.isEmpty) {

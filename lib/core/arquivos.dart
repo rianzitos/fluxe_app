@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -17,15 +18,25 @@ typedef ArquivoEscolhido = ({String nome, Uint8List bytes});
 Future<ArquivoEscolhido?> Function({required bool imagem}) escolherArquivo = _escolherArquivoDoSistema;
 
 Future<ArquivoEscolhido?> _escolherArquivoDoSistema({required bool imagem}) async {
+  // No Android o filtro por extensão vira um filtro por tipo (MIME), e cada app de arquivos chama o CSV de um jeito
+  // (text/csv, text/comma-separated-values, text/plain...): com filtro, planilhas válidas podem aparecer apagadas.
+  // Lá o seletor abre sem filtro e quem confere a extensão é o app ([extensaoDePlanilha]).
+  final semFiltro = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
   final arquivo = imagem
       ? await FilePicker.pickFile(type: FileType.image, dialogTitle: 'Escolher foto do perfil')
       : await FilePicker.pickFile(
-          type: FileType.custom,
-          allowedExtensions: const ['csv', 'txt'],
+          type: semFiltro ? FileType.any : FileType.custom,
+          allowedExtensions: semFiltro ? null : const ['csv', 'txt'],
           dialogTitle: 'Escolher a planilha (.csv)',
         );
   if (arquivo == null) return null;
   return (nome: arquivo.name, bytes: await arquivo.xFile.readAsBytes());
+}
+
+/// A planilha precisa ser um texto separado por ";" ou "," (.csv, ou .txt exportado do Excel).
+bool extensaoDePlanilha(String nome) {
+  final n = nome.toLowerCase();
+  return n.endsWith('.csv') || n.endsWith('.txt');
 }
 
 /// Texto de um CSV escolhido no aparelho. O Excel em português costuma salvar em Windows-1252 ("CSV (separado por
@@ -34,10 +45,16 @@ String textoDoCsv(Uint8List bytes) {
   try {
     return utf8.decode(bytes);
   } on FormatException {
-    // Windows-1252/Latin-1: cada byte é um caractere; o servidor converte de novo e confere.
-    return latin1.decode(bytes);
+    // Windows-1252: igual ao Latin-1, menos a faixa 0x80–0x9F (aspas curvas, travessão, €...).
+    return String.fromCharCodes(bytes.map((b) => b >= 0x80 && b <= 0x9F ? _cp1252[b - 0x80] : b));
   }
 }
+
+/// Caracteres do Windows-1252 de 0x80 a 0x9F (os indefinidos ficam como no Latin-1).
+const _cp1252 = [
+  0x20AC, 0x81, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0x8D, 0x017D, 0x8F, //
+  0x90, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014, 0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x9D, 0x017E, 0x0178,
+];
 
 /// Foto do perfil: recorta o centro em quadrado e reduz para [lado] px (PNG). Assim o envio fica pequeno
 /// (a câmera do celular gera fotos de vários MB) e a foto aparece bem no círculo do avatar.
