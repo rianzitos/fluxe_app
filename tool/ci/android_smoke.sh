@@ -209,32 +209,45 @@ else
   if grep -q "REQ GET /api/assistente 200" "$OUT/mock.log"; then ok "abriu o Assistente (GET /api/assistente 200)"; else erro "a aba IA não abriu o Assistente"; fi
   if read -r ENV_TOPO ENV_BASE < <(python3 tool/ci/detectar_chat.py "$OUT/07-assistente.png" enviar); then
     if [ "$ENV_BASE" -lt "$ABAS_Y" ]; then ok "sem teclado, o botão de enviar fica acima da barra de abas (base ${ENV_BASE} < ${ABAS_Y})"; else erro "sem teclado, o botão de enviar está sobre a barra de abas (base ${ENV_BASE}, abas ${ABAS_Y})"; fi
+    # O emulador tem o teclado do computador ligado ("teclado físico"): sem isto o Android mostra só a faixa do teclado,
+    # não o teclado virtual que um celular de verdade mostra. Liga a opção e reativa o teclado para valer na hora.
+    adb shell settings put secure show_ime_with_hard_keyboard 1 >/dev/null 2>&1
+    TECLADO=$(adb shell settings get secure default_input_method 2>/dev/null | tr -d '\r')
+    if [ -n "$TECLADO" ] && [ "$TECLADO" != "null" ]; then
+      adb shell ime disable "$TECLADO" >/dev/null 2>&1; adb shell ime enable "$TECLADO" >/dev/null 2>&1; adb shell ime set "$TECLADO" >/dev/null 2>&1
+    fi
+    sleep 2
     # toca no campo de texto, que fica à esquerda do botão de enviar, na mesma altura
-    adb shell settings put secure show_ime_with_hard_keyboard 1 >/dev/null 2>&1   # o emulador tem teclado físico: força o virtual
     toque $((W * 4 / 10)) $(((ENV_TOPO + ENV_BASE) / 2)); sleep 4
     adb shell input text 'previsao%spara%samanha'; sleep 2
     adb shell dumpsys input_method 2>/dev/null | grep -E "mInputShown|mImeWindowVis" | head -2 > "$OUT/teclado-chat.txt"
+    adb shell dumpsys window 2>/dev/null > "$OUT/janelas-chat.txt"
     foto 08-chat-teclado
-    # topo do teclado: a janela do InputMethod (o "frame" dela) na tela
-    IME_TOPO=$(adb shell dumpsys window windows 2>/dev/null | tr -d '\r' | awk '/Window\{[^}]*InputMethod\}/{f=1} f && /mFrame=|frame=/{print; exit}' \
-      | grep -oE '\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]' | head -1 | sed -E 's/\[[0-9]+,([0-9]+)\].*/\1/')
-    if grep -q "mInputShown=true" "$OUT/teclado-chat.txt"; then ok "o teclado abriu no chat"; else info "o Android não confirmou o teclado aberto (veja teclado-chat.txt e 08-chat-teclado.png)"; fi
-    if read -r ENV_TOPO2 ENV_BASE2 < <(python3 tool/ci/detectar_chat.py "$OUT/08-chat-teclado.png" enviar); then
-      if [ -n "$IME_TOPO" ] && [ "$IME_TOPO" -gt 0 ]; then
-        if [ "$ENV_BASE2" -le "$IME_TOPO" ]; then ok "com o teclado aberto, o campo e o botão de enviar ficam acima do teclado (base ${ENV_BASE2} ≤ topo do teclado ${IME_TOPO})"
-        else erro "com o teclado aberto, o botão de enviar ficou embaixo do teclado/barra (base ${ENV_BASE2} > topo do teclado ${IME_TOPO})"; fi
-      else
-        info "não consegui ler o topo do teclado no dumpsys; botão de enviar em ${ENV_TOPO2}-${ENV_BASE2} (confira 08-chat-teclado.png)"
-      fi
-      if [ "$ENV_BASE2" -lt "$((H - $(dp 48)))" ]; then ok "o botão de enviar não está na faixa da barra de navegação do sistema"; else erro "o botão de enviar está na faixa da barra de navegação do sistema"; fi
+    # topo do teclado: o "inset" do teclado que o Android informa ao app (o mesmo que o Flutter usa)
+    IME_TOPO=$(python3 tool/ci/topo_teclado.py < "$OUT/janelas-chat.txt" 2>/dev/null)
+    if [ -z "$IME_TOPO" ]; then
+      # Limitação do emulador (teclado do computador), não do app: confere ao menos que o campo continua à vista
+      info "o emulador não abriu o teclado virtual (usa o teclado do computador); veja 08-chat-teclado.png"
+      if read -r ENV_TOPO2 ENV_BASE2 < <(python3 tool/ci/detectar_chat.py "$OUT/08-chat-teclado.png" enviar) \
+        && [ "$ENV_BASE2" -lt "$((H - $(dp 48)))" ]; then ok "com o campo em foco, o botão de enviar continua à vista, acima da barra do sistema (base ${ENV_BASE2})"
+      else erro "com o campo em foco, o botão de enviar sumiu ou ficou na faixa da barra do sistema"; fi
     else
-      erro "com o teclado aberto, o botão de enviar sumiu da tela (coberto pelo teclado ou pela barra?)"
+      ALTURA_IME=$((H - IME_TOPO))
+      if [ "$ALTURA_IME" -gt $((H / 4)) ]; then ok "o teclado virtual abriu no chat (ocupa ${ALTURA_IME} px de ${H})"
+      else info "o emulador mostrou só a faixa do teclado físico (${ALTURA_IME} px); a conferência abaixo vale para ela"; fi
+      if read -r ENV_TOPO2 ENV_BASE2 < <(python3 tool/ci/detectar_chat.py "$OUT/08-chat-teclado.png" enviar); then
+        if [ "$ENV_BASE2" -le "$IME_TOPO" ]; then ok "com o teclado aberto, o campo e o botão de enviar ficam acima do teclado (base ${ENV_BASE2} ≤ topo do teclado ${IME_TOPO})"
+        else erro "com o teclado aberto, o botão de enviar ficou embaixo do teclado (base ${ENV_BASE2} > topo do teclado ${IME_TOPO})"; fi
+        if [ "$((IME_TOPO - ENV_BASE2))" -le "$(dp 40)" ]; then ok "o campo fica logo acima do teclado, sem buraco ($((IME_TOPO - ENV_BASE2)) px)"
+        else info "há $((IME_TOPO - ENV_BASE2)) px entre o botão de enviar e o teclado"; fi
+      else
+        erro "com o teclado aberto, o botão de enviar sumiu da tela (coberto pelo teclado ou pela barra?)"
+      fi
     fi
-    adb shell input keyevent 66; sleep 5                             # ENTER envia a pergunta
+    adb shell input keyevent 66; sleep 5                             # ENTER envia a pergunta (e fecha o teclado)
     foto 09-chat-resposta
     if grep -q "REQ POST /api/assistente 200" "$OUT/mock.log"; then ok "a pergunta digitada foi enviada (POST /api/assistente 200)"; else erro "a pergunta digitada não foi enviada"; fi
-    adb shell input keyevent 4; sleep 2                              # VOLTAR fecha o teclado
-    foto 10-chat-sem-teclado
+    adb shell settings put secure show_ime_with_hard_keyboard 0 >/dev/null 2>&1
   else
     erro "não achei o botão de enviar do chat na tela"
   fi
