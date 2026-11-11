@@ -150,6 +150,13 @@ ThemeData buildTheme(Brightness brightness) {
     canvasColor: pal.background,
     dividerColor: pal.border,
     extensions: [pal],
+    // Amarelo puro em texto sobre fundo claro quase some: no tema claro os botões de texto usam o dourado escuro.
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: brightness == Brightness.dark ? AppColors.accent : AppColors.accentText,
+        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: AppText.body),
+      ),
+    ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: AppColors.blackSoft,

@@ -25,11 +25,13 @@ Ele foi pensado para quem não está o tempo todo na frente de um computador, co
 - **Estamos desperdiçando comida?** Acompanhamento diário e mensal de produção e desperdício, com alertas quando passa da meta.
 - **O que aconteceu nos acessos?** Consulta e exportação dos registros de entrada e saída, com filtros.
 - **Dúvidas rápidas.** O assistente responde perguntas como "previsão para sexta" ou "como está o desperdício?" em linguagem natural.
-- **Quem está cadastrado e com qual cartão?** O administrador cadastra uma pessoa, vincula o cartão RFID (basta passá-lo numa catraca e escolher na lista) e ativa ou desativa acessos, tudo pelo celular.
+- **Quem está cadastrado e com qual cartão?** O administrador cadastra uma pessoa (ou importa uma planilha), vincula o cartão RFID (basta passá-lo numa catraca e escolher na lista) e ativa ou desativa acessos, tudo pelo celular.
+- **As catracas e balanças estão funcionando?** Os dispositivos IoT aparecem como Online/Offline; o administrador cadastra um dispositivo novo, gera o token, simula a leitura de um cartão e testa uma pesagem pelo app.
+- **O que está acontecendo agora?** A tela aberta se atualiza sozinha (tempo real) e cada entrada ou saída nas catracas aparece num aviso rápido; o sino mostra os mesmos alertas do site.
 
 Na prática, o app ajuda a **planejar a produção com mais precisão, reduzir o desperdício de alimentos, ter mais segurança e visibilidade sobre quem circula na instituição** e tomar decisões com dados em tempo real, de qualquer lugar.
 
-> O app é, principalmente, de **consulta e acompanhamento**, com uma exceção: o **administrador da empresa também cadastra pessoas e cartões** (aba *Cadastro* de **Pessoas**). As configurações da empresa, os dispositivos IoT e a importação de planilha continuam na versão web, e a leitura das catracas continua sendo feita pelos próprios dispositivos. O app usa os mesmos dados.
+> Desde a versão **1.2** o app tem **as mesmas funções do site**: além de consultar, a pessoa edita o próprio perfil (nome, e-mail, cargo, foto e senha), escolhe as notificações e as preferências dos relatórios, vê e encerra as sessões abertas no site, e o **administrador da empresa** cadastra pessoas e cartões (inclusive por planilha) e gerencia os **dispositivos IoT** (catracas, leitores e balanças). As regras são as mesmas do site porque o servidor usa o mesmo código para os dois. A leitura das catracas e das balanças continua sendo feita pelos próprios dispositivos.
 
 ---
 
@@ -55,12 +57,40 @@ O login usa os **mesmos usuários e senhas da web**.
 | **Login** | `/login` | E-mail e senha; campo opcional para trocar o endereço do servidor |
 | **Painel** | `/painel` | Usuários ativos, acessos, refeições previstas, acurácia, gráfico de previsão de demanda, distribuição de refeições, previsão das próximas horas, alertas e recomendações |
 | **Análise mensal** | `/acessos` | Total produzido/desperdiçado, média de pessoas, gráficos diários e insights do mês, com seletor de mês |
-| **Pessoas** | `/pessoas` | Duas abas: **Presentes agora** (quem está no local, por grupo, com busca) e **Cadastro** (pessoas e cartões; o administrador adiciona, edita, vincula cartões e ativa/desativa) |
+| **Pessoas** | `/pessoas` | Duas abas: **Presentes agora** (quem está no local, por grupo, com busca) e **Cadastro** (pessoas e cartões; o administrador adiciona, edita, vincula cartões, ativa/desativa e importa planilha) |
 | **Assistente IA** | `/assistente` | Chat com previsões (amanhã, sexta, semanal), desperdício, precisão, feriados; perguntas rápidas |
-| **Relatórios** | `/relatorios` | Registros de acesso com filtro por período, nome/função e categoria; paginação; exportação em CSV |
-| **Configurações** | `/configuracoes` | Perfil, tema (claro / escuro / sistema), endereço do servidor e sair da conta |
+| **Relatórios** | `/relatorios` | Registros de acesso com filtro por período, nome/função e categoria; paginação; exportação em CSV. Abre com o período padrão e os itens por página escolhidos em Configurações → Sistema |
+| **Configurações** | `/configuracoes` | As mesmas abas do site: **Perfil**, **Aparência**, **Notificações**, **Sistema**, **Integrações** (dispositivos IoT) e **Segurança**, mais **Aplicativo** (servidor, versão e sair). Detalhes abaixo |
 
-Outros detalhes: menu lateral escuro igual ao da web (no computador ele fica sempre visível e os cartões de resumo ficam lado a lado; no celular é um menu deslizante com barra de abas inferior), a logo oficial do SICAPDA, sino com a contagem de alertas, *pull-to-refresh* em todas as telas, tema claro e escuro, e identidade visual idêntica à web (cores `#0D0D0D` / `#FFC107`, fontes **Sora** e **Inter**).
+Outros detalhes: menu lateral escuro igual ao da web (no computador ele fica sempre visível e os cartões de resumo ficam lado a lado; no celular é um menu deslizante com barra de abas inferior), a logo oficial do SICAPDA, **atalho de IoT e sino** no cabeçalho (como no site), **tempo real**, *pull-to-refresh* em todas as telas, tema claro e escuro, e identidade visual idêntica à web (cores `#0D0D0D` / `#FFC107`, fontes **Sora** e **Inter**).
+
+### Configurações
+
+| Aba | O que dá para fazer |
+|---|---|
+| **Perfil** | Editar nome, e-mail e cargo (trocar o e-mail pede a senha atual, porque muda o login) e **alterar a foto** (o app recorta o centro em quadrado e reduz para 512 px antes de enviar). Mostra também perfil de acesso, instituição, localidade e horário |
+| **Aparência** | Tema claro, escuro ou o do sistema (vale para o aparelho) |
+| **Notificações** | Liga/desliga os alertas do sino e do Painel: previsão de demanda, acessos negados nas catracas e dispositivo IoT sem sinal. É a mesma escolha do site (fica na conta). "Resumo diário por e-mail" aparece como *Em breve*, igual ao site |
+| **Sistema** | Período padrão e itens por página dos Relatórios (da conta: valem no app e no site), o fuso (fixo, Brasília) e o **tempo real** deste aparelho |
+| **Integrações** | **Dispositivos IoT** da empresa (catracas, leitores RFID/biometria e balanças de desperdício) com **Online/Offline** e último sinal, o token sempre mascarado e o **desperdício de hoje** por refeição. O administrador **cadastra dispositivos** (o token inteiro aparece **uma única vez**, com botão de copiar), **gera outro token**, **simula a leitura** de um cartão numa catraca (registra um acesso de verdade) e **testa uma pesagem** |
+| **Segurança** | **Alterar senha**, autenticação em duas etapas (*Em breve*, igual ao site) e as **sessões abertas no site** (navegador, IP, último acesso), com "Encerrar" uma ou todas. O próprio app entra com token e não aparece nessa lista |
+| **Aplicativo** | Endereço do servidor, versão do app e sair da conta |
+
+O atalho **IoT** do cabeçalho (ícone de sinal, ao lado do sino) abre direto em Integrações, como os botões "Integrações" e "IoT" do topo do site.
+
+### Sino e tempo real
+
+- **Sino:** mostra os mesmos alertas do sino do site (previsão de demanda + acessos negados + dispositivos sem sinal, conforme as preferências da conta). Tocar num alerta leva para a tela do assunto (Relatórios, Integrações, Assistente...); "Preferências" abre Configurações → Notificações.
+- **Tempo real:** enquanto o app está aberto na tela, ele pergunta ao servidor a cada 8 s se algo mudou (`/api/aovivo`, o mesmo "Ao vivo" do site). Quando muda, a aba aberta se atualiza sozinha, o sino acompanha e cada entrada/saída nas catracas aparece num aviso rápido (menos no chat do Assistente, onde o aviso cobriria o campo de escrever). Em segundo plano não consulta nada; sem internet, espera cada vez mais entre as tentativas. Dá para desligar em Configurações → Sistema.
+
+### Chat do Assistente e a barra do Android
+
+No Android 15 em diante o app ocupa a tela inteira (inclusive atrás da barra de navegação: voltar, início e apps abertos) e é ele que precisa desviar dela. No chat:
+
+- com o **teclado aberto**, a barra de abas do app sai de cena e o campo de escrever fica **logo acima do teclado**;
+- sem a barra de abas embaixo (celular **deitado**, tablet, PC), o campo fica **acima da barra de navegação** do Android, nunca embaixo dela.
+
+O CI confere isso num emulador **Android 14 e Android 15** com a barra de **3 botões**: abre o chat, mostra o teclado, digita, mede se o botão de enviar ficou acima do teclado e envia (capturas `emulador14-08-chat-teclado.png` e `emulador15-08-chat-teclado.png` na Release de prévia).
 
 ### Cadastro de pessoas e cartões
 
@@ -75,8 +105,9 @@ Só o **administrador da empresa** altera (os outros usuários veem a lista e um
 | Editar | Menu **⋮** da pessoa → **Editar** |
 | Desativar / reativar pessoa | Menu **⋮** → **Desativar**. Desativada, a pessoa é negada na catraca e sai das contagens, mas o histórico de acessos fica. Pessoas nunca são apagadas |
 | Desativar, ativar ou remover um cartão | Toque no cartão (o UID) da pessoa. Remover libera o UID para outra pessoa |
+| Importar planilha | Botão de upload ao lado de **Adicionar pessoa** → **Baixar o modelo** (opcional) → **Escolher arquivo (.csv)** → **Importar**. Colunas `nome` e `cargo` (obrigatórias), `categoria`, `matricula` e `cartao` (opcionais); até 1.000 linhas e 1 MB; aceita o CSV do Excel em português (`;` e Windows-1252). As linhas com problema ficam de fora e aparecem listadas com o motivo |
 
-As regras são as mesmas do site, porque as duas pontas usam o mesmo código no servidor (`CadastroPessoas`): UID com 4 a 100 letras, números, hífen ou sublinhado (o app já deixa em maiúsculas e sem espaços ou `:`), **um UID só existe uma vez no sistema inteiro**, e uma empresa nunca enxerga nem altera pessoas de outra. A **importação de planilha (CSV)** continua só na versão web.
+As regras são as mesmas do site, porque as duas pontas usam o mesmo código no servidor (`CadastroPessoas` e `CsvPessoas`): UID com 4 a 100 letras, números, hífen ou sublinhado (o app já deixa em maiúsculas e sem espaços ou `:`), **um UID só existe uma vez no sistema inteiro**, e uma empresa nunca enxerga nem altera pessoas de outra.
 
 ---
 
@@ -133,7 +164,7 @@ Os três jeitos de usar o app são oferecidos na página de apresentação do si
 
 ### Opção 1 — pelo GitHub (recomendado)
 
-O workflow [`Build do aplicativo`](.github/workflows/build-app.yml) analisa, testa e compila o app (Android, web e Windows, em paralelo), **abre um emulador Android para testar o APK de verdade** (instala, abre, entra no app contra um servidor de mentira e reabre para conferir que a sessão foi salva) e publica os arquivos:
+O workflow [`Build do aplicativo`](.github/workflows/build-app.yml) analisa, testa e compila o app (Android, web e Windows, em paralelo), **abre emuladores Android 14 e 15 para testar o APK de verdade** (instala, abre, entra no app contra um servidor de mentira, reabre para conferir que a sessão foi salva e escreve no chat com o teclado aberto e a barra de 3 botões) e publica os arquivos:
 
 | Quando roda | O que acontece |
 |---|---|
@@ -145,10 +176,10 @@ Arquivos de cada Release: `SICAPDA.apk` + `app.json` (Android), `SICAPDA-Setup.e
 
 **Para publicar uma versão:**
 
-1. Aumente o `version:` do `pubspec.yaml` (ex.: `1.1.1+3`) e faça o merge na `main`. Em poucos minutos a Release `v1.1.1` aparece em **github.com/rianzitos/fluxe_app/releases**.
+1. Aumente o `version:` do `pubspec.yaml` (ex.: `1.2.1+4`) e o `kVersaoApp` de `lib/core/versao.dart` (um teste confere que os dois batem) e faça o merge na `main`. Em poucos minutos a Release `v1.2.1` aparece em **github.com/rianzitos/fluxe_app/releases**.
 2. Baixe os arquivos da Release e copie para o **SystemFluxe**: `SICAPDA.apk` + `app.json` e `SICAPDA-Setup.exe` + `app-windows.json` em `storage/downloads/`; e o conteúdo de `SICAPDA-web.zip` em `public/aplicativo/` (mantendo o `.htaccess` que está lá). Pronto: a página passa a mostrar versão, tamanho e data, e os botões funcionam.
 
-Também dá para criar a Release manualmente com uma tag: `git tag v1.1.1 && git push origin v1.1.1`.
+Também dá para criar a Release manualmente com uma tag: `git tag v1.2.1 && git push origin v1.2.1`.
 
 ### Opção 2 — no seu computador (Windows)
 
@@ -227,7 +258,11 @@ lib/
 ├── core/
 │   ├── api_client.dart        # Cliente HTTP (Bearer token, erros, timeout)
 │   ├── cadastro_service.dart  # Cadastro de pessoas e cartões na API (+ normalização e regra do UID)
-│   ├── app_state.dart         # Sessão, token seguro, servidor, tema, alertas
+│   ├── config_service.dart    # Configurações na API: perfil, senha, foto, preferências, sessões, IoT, sino, planilha
+│   ├── ao_vivo.dart           # Tempo real (GET /api/aovivo): mudanças e acessos novos
+│   ├── arquivos.dart          # Escolher arquivo (CSV/foto), reduzir a foto, entregar CSV (compartilhar/Downloads)
+│   ├── versao.dart            # Versão mostrada no app (igual ao pubspec.yaml; um teste confere)
+│   ├── app_state.dart         # Sessão, token seguro, servidor, tema, alertas, tempo real
 │   ├── theme.dart             # Identidade visual (claro/escuro), cores e fontes
 │   ├── layout.dart            # Ponto de corte celular × PC (menu lateral fixo)
 │   ├── salvar_arquivo.dart    # Exportação do CSV para a pasta Downloads (Windows)
@@ -238,7 +273,9 @@ lib/
 │   ├── common.dart            # Cards, indicadores, estados de carregamento/erro
 │   ├── charts.dart            # Gráficos (linha, barras, rosca) com fl_chart
 │   ├── sicapda_logo.dart      # Logo oficial do SICAPDA
-│   └── page_header.dart       # Cabeçalho, sino e lista de alertas
+│   ├── formularios.dart       # Campos, botões e avisos dos formulários de Configurações
+│   ├── navegacao.dart         # Navegação do sino/atalhos (trocar de aba, abrir Configurações numa aba)
+│   └── page_header.dart       # Cabeçalho, atalho IoT, sino e lista de alertas
 └── screens/
     ├── login_screen.dart
     ├── app_shell.dart         # Menu lateral (fixo no PC, deslizante no celular) + abas
@@ -247,9 +284,13 @@ lib/
     ├── pessoas_screen.dart        # Abas "Presentes agora" e "Cadastro"
     ├── cadastro_pessoas.dart      # Aba Cadastro: lista, busca, ações por pessoa e por cartão
     ├── cadastro_formularios.dart  # Formulários (adicionar/editar pessoa, vincular cartão) e lista de cartões lidos nas catracas
+    ├── cadastro_importar.dart     # Importar planilha (CSV) e baixar o modelo
     ├── assistente_screen.dart
     ├── relatorios_screen.dart
-    └── configuracoes_screen.dart
+    ├── configuracoes_screen.dart  # Abas de Configurações + aba Aplicativo (servidor, versão, sair)
+    ├── config_conta.dart          # Perfil (dados e foto) e Segurança (senha e sessões do site)
+    ├── config_preferencias.dart   # Aparência, Notificações e Sistema
+    └── config_integracoes.dart    # Dispositivos IoT: lista, cadastrar, token, simular leitura, pesagem
 assets/fonts/                  # Inter e Sora
 assets/icon/                   # Arte do ícone do aplicativo
 assets/logo/                   # Logo oficial do SICAPDA (usada no login, no menu e na abertura)
@@ -259,7 +300,7 @@ test/                          # Testes + respostas reais da API em test/fixture
 tool/publicar_app.ps1          # Compila (Android e/ou Windows) e publica no storage/downloads do SystemFluxe
 tool/empacotar_windows.ps1     # Gera o SICAPDA-Setup.exe a partir do build do Windows
 tool/gerar_icones_web.py       # Gera favicon e ícones do PWA a partir da logo
-tool/ci/                       # Teste do APK no emulador (CI): servidor de mentira e roteiro com adb
+tool/ci/                       # Teste do APK no emulador (CI): servidor de mentira, roteiro com adb e leitura das capturas
 .github/workflows/build-app.yml  # CI: analisa, testa e compila Android + web + Windows, testa o APK no emulador e publica a Release
 ```
 
@@ -284,11 +325,28 @@ Todas as rotas ficam no SystemFluxe e, exceto o login, exigem o cabeçalho `Auth
 | `POST` | `/api/pessoas/cartao` | `{funcionario_id, uid}` vincula um cartão (**administrador**) |
 | `POST` | `/api/pessoas/cartao/ativo` | `{id, ativo}` ativa ou desativa um cartão (**administrador**) |
 | `POST` | `/api/pessoas/cartao/remover` | `{id}` remove o cartão e libera o UID (**administrador**) |
-| `GET` | `/api/relatorios?de&ate&busca&categoria&pagina` | Registros de acesso paginados |
+| `POST` | `/api/pessoas/importar` | `{csv}`: texto da planilha; devolve pessoas, cartões, linhas ignoradas e o motivo de cada uma (**administrador**) |
+| `GET` | `/api/pessoas/modelo` | Modelo da planilha (CSV) |
+| `GET` | `/api/relatorios?de&ate&busca&categoria&pagina` | Registros de acesso paginados (sem `de`, usa o período padrão da conta; itens por página da conta) |
 | `GET` | `/api/relatorios/exportar` | CSV com os mesmos filtros |
 | `GET` / `POST` | `/api/assistente` | Informações do assistente / enviar pergunta `{mensagem}` |
+| `POST` | `/api/perfil` | `{nome, email, cargo, senha_atual?}` (trocar o e-mail exige a senha atual); devolve o `usuario` atualizado |
+| `POST` | `/api/perfil/senha` | `{senha_atual, senha_nova, senha_confirmar}` |
+| `POST` | `/api/perfil/foto` | `{imagem}`: JPG ou PNG em base64 (até 5 MB); devolve o `usuario` com a foto nova |
+| `GET` | `/api/preferencias` | Notificações (catálogo + ligada/desligada), sistema (período e itens por página) e as opções |
+| `POST` | `/api/preferencias/notificacao` | `{chave, ativo}`; devolve o novo número do sino |
+| `POST` | `/api/preferencias/sistema` | `{periodo_padrao, itens_pagina}` |
+| `GET` | `/api/sessoes` | Sessões abertas no site com esta conta |
+| `POST` | `/api/sessoes/encerrar` | `{id}` ou `{todas: true}` |
+| `GET` | `/api/notificacoes` | Alertas do sino (com o `link` de destino de cada um) |
+| `GET` | `/api/aovivo?ultimo=ID` | Tempo real: `assinatura` (muda quando algo muda), acessos novos e status dos dispositivos |
+| `GET` | `/api/dispositivos` | Dispositivos IoT, tipos, refeições e desperdício de hoje; `podeEditar` (qualquer usuário) |
+| `POST` | `/api/dispositivos/criar` | `{nome, tipo, localizacao?}`; devolve o token inteiro, uma única vez (**administrador**) |
+| `POST` | `/api/dispositivos/token` | `{id}`: gera outro token (**administrador**) |
+| `POST` | `/api/dispositivos/simular` | `{id, uid}`: passa o cartão pela catraca, registrando um acesso real (**administrador**) |
+| `POST` | `/api/dispositivos/pesagem` | `{id, tipo, desperdicio_kg}`: total de desperdício da refeição hoje (**administrador**) |
 
-Respostas de sucesso trazem `"sucesso": true`; erros trazem `{"sucesso": false, "mensagem": "..."}` com o código HTTP adequado (401, 403, 404, 409, 422, 500). No cadastro, `403` é "só o administrador", `404` é pessoa ou cartão que não existe na empresa, `409` é cartão que já tem dono e `422` é dado inválido; a `mensagem` já vem pronta para mostrar. Se o token expirar ou for invalidado, o app volta sozinho para o login.
+Respostas de sucesso trazem `"sucesso": true`; erros trazem `{"sucesso": false, "mensagem": "..."}` com o código HTTP adequado (401, 403, 404, 409, 422, 500). No cadastro e nas configurações, `403` é "só o administrador" (ou senha atual incorreta), `404` é pessoa, cartão, dispositivo ou sessão que não existe na empresa, `409` é cartão ou e-mail que já tem dono e `422` é dado inválido; a `mensagem` já vem pronta para mostrar. Uma rota que o servidor não tem responde `404` com "Rota não encontrada." e o app explica que é preciso atualizar o SystemFluxe. Se o token expirar ou for invalidado, o app volta sozinho para o login.
 
 ---
 
@@ -299,7 +357,7 @@ flutter analyze
 flutter test
 ```
 
-Os testes cobrem formatação, cliente HTTP, servidor padrão (celular × web), sessão (inclusive cofre que falha), leitura dos modelos e o fluxo completo do app (login, navegação por todas as telas, logout e tema). O Cadastro de pessoas tem o seu próprio arquivo (`test/cadastro_test.dart`): regras do UID, o que vai pela rede em cada ação, e as telas (adicionar, editar, vincular cartão com a lista das catracas atualizando sozinha, ativar/desativar com confirmação, somente leitura, servidor desatualizado, PC e tema escuro). Eles usam **respostas reais da API** salvas em `test/fixtures/`, então não precisam de internet nem de servidor.
+Os testes cobrem formatação, cliente HTTP, servidor padrão (celular × web), sessão (inclusive cofre que falha), leitura dos modelos e o fluxo completo do app (login, navegação por todas as telas, logout e tema). As funções da versão 1.2 ficam em `test/configuracoes_test.dart`: perfil, foto (recorte e redução de verdade), senha, notificações, sistema, dispositivos IoT (cadastrar, token, simular, pesagem, somente leitura), sessões, sino e seus destinos, atalho IoT, tempo real (atualiza a aba e avisa; pausa em segundo plano), importação de planilha (inclusive CSV em Windows-1252), servidor antigo e a posição do campo do chat com e sem teclado (celular em pé e deitado, com as barras do Android 15). O Cadastro de pessoas tem o seu próprio arquivo (`test/cadastro_test.dart`): regras do UID, o que vai pela rede em cada ação, e as telas (adicionar, editar, vincular cartão com a lista das catracas atualizando sozinha, ativar/desativar com confirmação, somente leitura, servidor desatualizado, PC e tema escuro). Eles usam **respostas reais da API** salvas em `test/fixtures/`, então não precisam de internet nem de servidor.
 
 ---
 
@@ -312,6 +370,7 @@ Os testes cobrem formatação, cliente HTTP, servidor padrão (celular × web), 
 | [`flutter_secure_storage`](https://pub.dev/packages/flutter_secure_storage) | Guarda o token de acesso de forma criptografada |
 | [`shared_preferences`](https://pub.dev/packages/shared_preferences) | Preferências (tema, servidor) |
 | [`share_plus`](https://pub.dev/packages/share_plus) | Compartilhar o CSV exportado |
+| [`file_picker`](https://pub.dev/packages/file_picker) | Escolher a planilha (CSV) e a foto do perfil (Android, Windows e navegador; não pede permissão de armazenamento) |
 | `flutter_localizations` | Calendário e textos em português |
 
 ---
@@ -333,6 +392,9 @@ Os testes cobrem formatação, cliente HTTP, servidor padrão (celular × web), 
 | APK não instala no emulador ("INSTALL_FAILED_NO_MATCHING_ABIS") | Era o APK só ARM das versões antigas; a atual inclui x86_64. Baixe o APK novo. |
 | Na aba Cadastro: "O servidor ainda não tem o cadastro pelo aplicativo" | O app é mais novo que o SystemFluxe do servidor: as rotas `/api/pessoas/cadastro` e `/api/pessoas/*` ainda não existem lá. Publique a versão atual do SystemFluxe (`ApiController.php`, `PessoaController.php`, `CadastroPessoas.php` e `CadastroException.php`). |
 | Na aba Cadastro não aparecem os botões de adicionar e vincular | Só o administrador da empresa altera o cadastro; as outras contas só consultam. |
+| Em Configurações: "O servidor ainda não tem esta função pelo aplicativo" | O app 1.2 é mais novo que o SystemFluxe do servidor: faltam as rotas `/api/perfil`, `/api/preferencias`, `/api/dispositivos`, `/api/sessoes`, `/api/notificacoes` e `/api/aovivo`. Publique a versão atual do SystemFluxe (`ApiController.php`, `Conta.php`, `Integracoes.php`, `Notificacoes.php`, `Preferencia.php`, `CadastroPessoas.php`). Num servidor antigo o resto do app funciona; o tempo real só fica desligado. |
+| Em Integrações não aparecem "Adicionar dispositivo", "Novo token", "Simular leitura" e "Testar pesagem" | Só o administrador da empresa gerencia os dispositivos; as outras contas veem a lista e o desperdício de hoje. |
+| A tela não se atualiza sozinha | Confira Configurações → Sistema → **Atualizar em tempo real**. O tempo real também pausa com o app em segundo plano e volta ao abrir. |
 | A lista "Cartões lidos nas catracas" fica vazia | Nenhuma catraca leu um cartão ainda sem dono nos últimos 30 dias, ou falta rodar a *Migration 005* (tabela `cartoes_nao_cadastrados`) no banco. Dá para digitar o UID do mesmo jeito. |
 | Painel sem dados ou "Sem movimento previsto" | Ainda não há registros nas catracas ou produção cadastrada, ou está fora do expediente. É o mesmo comportamento da web. |
 | `git pull` reclama de `pubspec.lock`, `linux/`, `macos/`, `windows/` | São arquivos gerados pelo Flutter. Descarte com `git checkout -- pubspec.lock analysis_options.yaml linux macos windows`, faça o pull e rode `flutter pub get`. |

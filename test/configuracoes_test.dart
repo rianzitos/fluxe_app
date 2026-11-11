@@ -566,6 +566,30 @@ void main() {
       expect(pedidos(log, 'GET', '/api/notificacoes'), greaterThan(0));
     });
 
+    testWidgets('no chat do Assistente o aviso de acesso não aparece (ficaria em cima do campo de escrever)', (tester) async {
+      var mudou = false;
+      await abrirApp(tester, fakeApi(overrides: {
+        'GET /api/aovivo': (req) {
+          final base = fixtureJson('aovivo');
+          if (!mudou || !req.url.queryParameters.containsKey('ultimo')) {
+            return jsonResposta(base
+              ..['assinatura'] = 'antes'
+              ..['eventos'] = []
+              ..['novosAcessos'] = 0);
+          }
+          return jsonResposta(base);
+        },
+      }));
+      await tester.tap(find.text('IA'));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 9));
+      mudou = true;
+      await tester.pump(const Duration(seconds: 9));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Entrada · Maria Santos · 22:12'), findsNothing);
+      await tester.pumpAndSettle();
+    });
+
     testWidgets('com o app em segundo plano não consulta; ao voltar, consulta na hora', (tester) async {
       final log = <http.Request>[];
       await abrirApp(tester, fakeApi(log: log));

@@ -75,7 +75,11 @@ class AlertBell extends StatelessWidget {
   Widget build(BuildContext context) {
     final pal = context.pal;
     final alertas = AppScope.of(context).alertas;
-    return InkWell(
+    return Semantics(
+      button: true,
+      label: alertas.isEmpty ? 'Notificações' : 'Notificações (${alertas.length})',
+      excludeSemantics: true,
+      child: InkWell(
       customBorder: const CircleBorder(),
       onTap: () => abrirNotificacoes(context),
       child: Stack(
@@ -105,6 +109,7 @@ class AlertBell extends StatelessWidget {
               ),
             ),
         ],
+      ),
       ),
     );
   }

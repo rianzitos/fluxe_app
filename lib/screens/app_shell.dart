@@ -101,7 +101,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 
   void _avisarAcessos(({List<EventoAcesso> eventos, int total}) novos) {
-    if (!mounted || novos.eventos.isEmpty) return;
+    // No chat do Assistente o aviso ficaria em cima do campo de escrever: lá não mostra (o resto segue igual).
+    if (!mounted || novos.eventos.isEmpty || _index == 3) return;
     final messenger = ScaffoldMessenger.of(context);
     final ultimo = novos.eventos.last;
     final outros = novos.total - 1;
