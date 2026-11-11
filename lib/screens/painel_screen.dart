@@ -41,12 +41,19 @@ class _PainelScreenState extends State<PainelScreen> with TabRefresh {
 
   @override
   void reload() {
-    if (mounted) setState(() => _future = _load());
+    // Corpo em bloco: com "=>" o callback devolveria o Future, e o Flutter (em debug e nos testes) recusa.
+    if (mounted) {
+      setState(() {
+        _future = _load();
+      });
+    }
   }
 
   Future<void> _refresh() async {
     final f = _load();
-    setState(() => _future = f);
+    setState(() {
+      _future = f;
+    });
     try {
       await f;
     } catch (_) {}

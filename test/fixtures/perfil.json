@@ -1,0 +1,22 @@
+{
+  "sucesso": true,
+  "mensagem": "Perfil atualizado com sucesso!",
+  "usuario": {
+    "id": 1,
+    "nome": "Admin Teste",
+    "email": "admin@teste.invalid",
+    "perfil": "admin",
+    "cargo": "Gestor",
+    "telefone": null,
+    "matricula": null,
+    "foto": null,
+    "empresa": {
+      "id": 1,
+      "nome": "Escola Teste",
+      "cnpj": "12345678000199",
+      "cidade": "Mococa",
+      "estado": "SP",
+      "horario_funcionamento": "07:00-22:00"
+    }
+  }
+}

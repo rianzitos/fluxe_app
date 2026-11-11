@@ -1,14 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../core/api_client.dart';
 import '../core/app_state.dart';
 import '../core/format.dart';
-import '../core/salvar_arquivo.dart';
+import '../core/arquivos.dart';
 import '../core/theme.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
@@ -82,12 +80,19 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> with TabRefresh {
 
   @override
   void reload() {
-    if (mounted) setState(() => _future = _load());
+    // Corpo em bloco: com "=>" o callback devolveria o Future, e o Flutter (em debug e nos testes) recusa.
+    if (mounted) {
+      setState(() {
+        _future = _load();
+      });
+    }
   }
 
   Future<void> _refresh() async {
     final f = _load();
-    setState(() => _future = f);
+    setState(() {
+      _future = f;
+    });
     try {
       await f;
     } catch (_) {}
@@ -138,29 +143,25 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> with TabRefresh {
     setState(() => _exportando = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final q = _query..remove('pagina');
+      // O mesmo período que está na tela (que pode ter vindo do período padrão da conta, escolhido em Configurações).
+      final q = _query
+        ..remove('pagina')
+        ..addAll({if (_deAplicado.isNotEmpty) 'de': _deAplicado, if (_ateAplicado.isNotEmpty) 'ate': _ateAplicado});
       final csv = await AppScope.read(context).api.getText('/relatorios/exportar', query: q);
       final nome = 'relatorio-acessos_${_deAplicado}_a_$_ateAplicado.csv';
-      if (exportaParaPasta) {
-        // Windows: salva em Downloads e oferece abrir a pasta
-        final caminho = await salvarCsvNosDownloads(nome, csv);
-        messenger.showSnackBar(SnackBar(
-          content: const Text('Relatório salvo na pasta Downloads.'),
-          action: SnackBarAction(label: 'Abrir pasta', onPressed: () => mostrarNaPasta(caminho)),
-        ));
-      } else {
-        await SharePlus.instance.share(ShareParams(
-          files: [XFile.fromData(utf8.encode(csv), mimeType: 'text/csv', name: nome)],
-          fileNameOverrides: [nome],
-          subject: 'Relatório de acessos',
-        ));
-      }
+      if (!mounted) return;
+      await entregarCsv(context, nome: nome, csv: csv, assunto: 'Relatório de acessos');
     } on ApiException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {
       messenger.showSnackBar(const SnackBar(content: Text('Não foi possível exportar o relatório.')));
     } finally {
-      if (mounted) setState(() => _exportando = false);
+      // Corpo em bloco: com "=>" o callback devolveria o Future, e o Flutter (em debug e nos testes) recusa.
+      if (mounted) {
+        setState(() {
+          _exportando = false;
+        });
+      }
     }
   }
 

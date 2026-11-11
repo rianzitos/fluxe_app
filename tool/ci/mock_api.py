@@ -23,6 +23,11 @@ ROTAS_GET = {
     '/api/pessoas/leituras': 'pessoas_leituras',
     '/api/relatorios': 'relatorios',
     '/api/assistente': 'assistente',
+    '/api/notificacoes': 'notificacoes',
+    '/api/aovivo': 'aovivo',
+    '/api/preferencias': 'preferencias',
+    '/api/dispositivos': 'dispositivos',
+    '/api/sessoes': 'sessoes',
 }
 ROTAS_ESCRITA_CADASTRO = {
     '/api/pessoas/criar',
@@ -49,7 +54,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         rota = self.path.split('?')[0]
-        if rota in ROTAS_GET:
+        if rota == '/api/aovivo':
+            # Tempo real "parado": sempre a mesma assinatura e nenhum acesso novo (sem avisos cobrindo as capturas).
+            estado = json.loads(self._fixture('aovivo'))
+            estado.update(eventos=[], novosAcessos=0)
+            self._enviar(200, json.dumps(estado, ensure_ascii=False).encode())
+        elif rota in ROTAS_GET:
             self._enviar(200, self._fixture(ROTAS_GET[rota]))
         elif rota == '/api/relatorios/exportar':
             self._enviar(200, 'Nome;Função\n'.encode(), 'text/csv; charset=utf-8')

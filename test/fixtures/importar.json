@@ -1,0 +1,14 @@
+{
+  "sucesso": true,
+  "mensagem": "Importação concluída.",
+  "total": 3,
+  "pessoas": 2,
+  "cartoes": 1,
+  "ignoradas": 1,
+  "erros": [
+    {
+      "linha": 4,
+      "motivo": "nome em branco"
+    }
+  ]
+}

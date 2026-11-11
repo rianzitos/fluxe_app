@@ -10,8 +10,9 @@
 #   • Push em branch claude/** ou execução manual: atualiza a Release de PRÉVIA "ci-preview" (marcada como
 #     pré-lançamento, nunca vira a "mais recente"), para baixar e testar antes de mesclar.
 #
-# O APK ainda é testado de verdade: o job "smoke-android" abre um emulador Android, instala o APK de release,
-# entra no app contra um servidor de mentira e reabre para conferir que a sessão ficou salva.
+# O APK ainda é testado de verdade: o job "smoke-android" abre emuladores Android 14 e 15 (no 15 o app ocupa a tela
+# inteira), instala o APK de release, entra no app contra um servidor de mentira, reabre para conferir que a sessão
+# ficou salva e escreve no chat do Assistente com o teclado aberto e a barra de 3 botões do Android.
 #
 # Assinatura do Android: com os secrets abaixo o APK sai assinado com a SUA chave (necessário para que as
 # atualizações instalem por cima da versão anterior). Sem eles, usa a chave de debug (ok para testes).
@@ -221,11 +222,21 @@ jobs:
   # (emuladores em servidores compartilhados às vezes falham por motivos alheios ao app), mas o resultado
   # fica no resumo da execução, com capturas de tela.
   smoke-android:
-    name: Android (testar o APK no emulador)
+    name: Android ${{ matrix.versao }} (testar o APK no emulador)
     needs: android
     runs-on: ubuntu-latest
     timeout-minutes: 35
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: 34
+            versao: '14'
+          # Android 15: o sistema obriga o app a ocupar a tela inteira (edge-to-edge); é aqui que o campo do chat
+          # poderia ficar embaixo da barra de navegação se o app não desviasse dela.
+          - api: 35
+            versao: '15'
     steps:
       - uses: actions/checkout@v4
 
@@ -251,10 +262,10 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --list 2>/dev/null | grep -E 'system-images;android-3[3-5];' | sed 's/ *|.*//' | sort -u || true
           nproc; free -m | head -2
 
-      - name: Emulador Android 14 + teste do app
+      - name: Emulador Android ${{ matrix.versao }} + teste do app
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: ${{ matrix.api }}
           arch: x86_64
           target: google_apis
           profile: pixel_6
@@ -267,7 +278,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: SICAPDA-android-smoke
+          name: SICAPDA-android-smoke-${{ matrix.versao }}
           path: smoke/
           if-no-files-found: ignore
           retention-days: 7
@@ -397,22 +408,25 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      # As capturas de tela do emulador acompanham a Release (para conferir como o app ficou no Android de verdade)
+      # As capturas de tela dos emuladores acompanham a Release (para conferir como o app ficou no Android de verdade)
       - uses: actions/download-artifact@v4
         if: ${{ needs.smoke-android.result != 'skipped' }}
         continue-on-error: true
         with:
-          name: SICAPDA-android-smoke
+          pattern: SICAPDA-android-smoke-*
           path: smoke
 
       - name: Guardar capturas para a publicação
         run: |
           mkdir -p extras
-          if [ -d smoke ]; then
-            for f in smoke/*.png smoke/resumo*.txt smoke/mock.log; do
-              [ -f "$f" ] && cp "$f" "extras/emulador-$(basename "$f")"
+          # smoke/SICAPDA-android-smoke-14/..., smoke/SICAPDA-android-smoke-15/... → emulador14-..., emulador15-...
+          for pasta in smoke/SICAPDA-android-smoke-*; do
+            [ -d "$pasta" ] || continue
+            v="${pasta##*-}"
+            for f in "$pasta"/*.png "$pasta"/resumo*.txt "$pasta"/mock.log "$pasta"/aparelho.txt; do
+              [ -f "$f" ] && cp "$f" "extras/emulador${v}-$(basename "$f")"
             done
-          fi
+          done
           ls -la extras
 
       - uses: actions/upload-artifact@v4

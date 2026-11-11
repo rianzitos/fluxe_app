@@ -71,8 +71,65 @@ MockClient fakeApi({
           return http.Response('Nome;Função\n', 200);
         case '/api/assistente':
           return ok(req.method == 'POST' ? 'assistente_post' : 'assistente');
+
+        // ─── Configurações, sino, tempo real e planilha (fluxe_app 1.2) ───
+        case '/api/perfil':
+          final u = Map<String, dynamic>.of(fixtureJson('perfil')['usuario'] as Map<String, dynamic>);
+          final c = corpo();
+          u.addAll({'nome': c['nome'], 'email': c['email'], 'cargo': c['cargo']});
+          return jsonResposta({'sucesso': true, 'mensagem': 'Perfil atualizado com sucesso!', 'usuario': u});
+        case '/api/perfil/senha':
+          return jsonResposta({'sucesso': true, 'mensagem': 'Senha atualizada com sucesso!'});
+        case '/api/perfil/foto':
+          final u = Map<String, dynamic>.of(fixtureJson('perfil')['usuario'] as Map<String, dynamic>)
+            ..['foto'] = 'http://servidor.test/uploads/perfil/perfil_nova.png';
+          return jsonResposta({'sucesso': true, 'mensagem': 'Foto atualizada com sucesso!', 'usuario': u});
+        case '/api/preferencias':
+          return ok('preferencias');
+        case '/api/preferencias/notificacao':
+          return jsonResposta({'sucesso': true, 'mensagem': 'Preferência salva.', 'ativo': corpo()['ativo'], 'sino': 2});
+        case '/api/preferencias/sistema':
+          return jsonResposta({'sucesso': true, 'mensagem': 'Preferências salvas.'});
+        case '/api/sessoes':
+          return ok('sessoes');
+        case '/api/sessoes/encerrar':
+          return jsonResposta({'sucesso': true, 'mensagem': corpo()['todas'] == true ? '2 sessões encerradas.' : 'Sessão encerrada.'});
+        case '/api/notificacoes':
+          return ok('notificacoes');
+        case '/api/aovivo':
+          // Sem mudança nenhuma: a mesma assinatura e nenhum acesso novo (os testes do tempo real trocam esta rota).
+          final estado = fixtureJson('aovivo')
+            ..['eventos'] = []
+            ..['novosAcessos'] = 0;
+          return jsonResposta(estado);
+        case '/api/dispositivos':
+          return ok('dispositivos');
+        case '/api/dispositivos/criar':
+          final c = corpo();
+          return jsonResposta({
+            'sucesso': true,
+            'mensagem': 'Dispositivo criado.',
+            'token': 'a1' * 32,
+            'dispositivo': {
+              'id': 50, 'nome': c['nome'], 'tipo': c['tipo'], 'tipo_rotulo': 'Cartão RFID', 'localizacao': c['localizacao'],
+              'token': 'a1a1a1…a1a1', 'status': 'offline', 'ultimo_ping': null, 'ultimo_sinal': 'Nunca conectou',
+            },
+          });
+        case '/api/dispositivos/token':
+          final disp = (fixtureJson('dispositivos')['dispositivos'] as List).first as Map<String, dynamic>;
+          return jsonResposta({'sucesso': true, 'mensagem': 'Novo token gerado.', 'token': 'b2' * 32, 'dispositivo': disp});
+        case '/api/dispositivos/simular':
+          return ok('simular');
+        case '/api/dispositivos/pesagem':
+          final c = corpo();
+          return jsonResposta({'sucesso': true, 'mensagem': 'Total de desperdício registrado.', 'desperdicio_kg': c['desperdicio_kg'], 'tipo': c['tipo']});
+        case '/api/pessoas/importar':
+          return ok('importar');
+        case '/api/pessoas/modelo':
+          return http.Response.bytes(utf8.encode('\uFEFFnome;cargo;categoria;matricula;cartao\r\n'), 200,
+              headers: {'content-type': 'text/csv; charset=utf-8'});
       }
-      return http.Response(jsonEncode({'sucesso': false, 'mensagem': 'Rota não encontrada.'}), 404);
+      return jsonResposta({'sucesso': false, 'mensagem': 'Rota não encontrada.'}, 404); // como o servidor: JSON em UTF-8
     });
 
 Future<AppController> newController({MockClient? client, bool loggedIn = false}) async {
