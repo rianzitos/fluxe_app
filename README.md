@@ -24,7 +24,7 @@ Ele foi pensado para quem não está o tempo todo na frente de um computador, co
 - **Quantas refeições e quantos quilos produzir amanhã?** A previsão é calculada com o histórico de acessos e produção, considerando feriados e dias da semana.
 - **Estamos desperdiçando comida?** Acompanhamento diário e mensal de produção e desperdício, com alertas quando passa da meta.
 - **O que aconteceu nos acessos?** Consulta e exportação dos registros de entrada e saída, com filtros.
-- **Dúvidas rápidas.** O assistente responde perguntas como "previsão para sexta" ou "como está o desperdício?" em linguagem natural.
+- **Dúvidas rápidas.** O assistente responde perguntas como "previsão para sexta", "como está o desperdício?" ou "como vincular um cartão?" em linguagem natural. Com a IA ligada no servidor (Claude, `ANTHROPIC_API_KEY` no SystemFluxe), ele entende a conversa ("e para segunda?"), consulta os dados da empresa e tira dúvidas de uso do sistema, mas responde **só sobre o SICAPDA**; sem ela, responde o motor de previsões de sempre.
 - **Quem está cadastrado e com qual cartão?** O administrador cadastra uma pessoa (ou importa uma planilha), vincula o cartão RFID (basta passá-lo numa catraca e escolher na lista) e ativa ou desativa acessos, tudo pelo celular.
 - **As catracas e balanças estão funcionando?** Os dispositivos IoT aparecem como Online/Offline; o administrador cadastra um dispositivo novo, gera o token, simula a leitura de um cartão e testa uma pesagem pelo app.
 - **O que está acontecendo agora?** A tela aberta se atualiza sozinha (tempo real) e cada entrada ou saída nas catracas aparece num aviso rápido; o sino mostra os mesmos alertas do site.
@@ -58,7 +58,7 @@ O login usa os **mesmos usuários e senhas da web**.
 | **Painel** | `/painel` | Usuários ativos, acessos, refeições previstas, acurácia, gráfico de previsão de demanda, distribuição de refeições, previsão das próximas horas, alertas e recomendações |
 | **Análise mensal** | `/acessos` | Total produzido/desperdiçado, média de pessoas, gráficos diários e insights do mês, com seletor de mês |
 | **Pessoas** | `/pessoas` | Duas abas: **Presentes agora** (quem está no local, por grupo, com busca) e **Cadastro** (pessoas e cartões; o administrador adiciona, edita, vincula cartões, ativa/desativa e importa planilha) |
-| **Assistente IA** | `/assistente` | Chat com previsões (amanhã, sexta, semanal), desperdício, precisão, feriados; perguntas rápidas |
+| **Assistente IA** | `/assistente` | Chat com previsões (amanhã, sexta, semanal), desperdício, precisão, feriados e dúvidas de uso do sistema (com a IA ligada no servidor); perguntas rápidas |
 | **Relatórios** | `/relatorios` | Registros de acesso com filtro por período, nome/função e categoria; paginação; exportação em CSV. Abre com o período padrão e os itens por página escolhidos em Configurações → Sistema |
 | **Configurações** | `/configuracoes` | As mesmas abas do site: **Perfil**, **Aparência**, **Notificações**, **Sistema**, **Integrações** (dispositivos IoT) e **Segurança**, mais **Aplicativo** (servidor, versão e sair). Detalhes abaixo |
 
@@ -329,7 +329,7 @@ Todas as rotas ficam no SystemFluxe e, exceto o login, exigem o cabeçalho `Auth
 | `GET` | `/api/pessoas/modelo` | Modelo da planilha (CSV) |
 | `GET` | `/api/relatorios?de&ate&busca&categoria&pagina` | Registros de acesso paginados (sem `de`, usa o período padrão da conta; itens por página da conta) |
 | `GET` | `/api/relatorios/exportar` | CSV com os mesmos filtros |
-| `GET` / `POST` | `/api/assistente` | Informações do assistente / enviar pergunta `{mensagem}` |
+| `GET` / `POST` | `/api/assistente` | Informações do assistente (`ia`: o servidor responde com IA) / enviar pergunta `{mensagem, historico}` (as trocas anteriores da conversa; o app espera até 90 s pela resposta) |
 | `POST` | `/api/perfil` | `{nome, email, cargo, senha_atual?}` (trocar o e-mail exige a senha atual); devolve o `usuario` atualizado |
 | `POST` | `/api/perfil/senha` | `{senha_atual, senha_nova, senha_confirmar}` |
 | `POST` | `/api/perfil/foto` | `{imagem}`: JPG ou PNG em base64 (até 5 MB); devolve o `usuario` com a foto nova |

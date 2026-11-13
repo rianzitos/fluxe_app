@@ -34,6 +34,10 @@ class ApiClient {
 
   static const _timeout = Duration(seconds: 25);
 
+  /// Espera de uma pergunta ao Assistente: com a IA ligada no servidor, ela pode consultar os dados
+  /// algumas vezes antes de responder (o servidor desiste em ~75 s e responde pelo motor local).
+  static const timeoutAssistente = Duration(seconds: 90);
+
   /// Aceita "meuservidor.com", "http://192.168.0.10:8000/" etc.
   static String normalizeBaseUrl(String raw) {
     var url = raw.trim();
@@ -64,8 +68,8 @@ class ApiClient {
   Future<Map<String, dynamic>> get(String path, {Map<String, String>? query}) =>
       _send(() => _http.get(_uri(path, query), headers: _headers));
 
-  Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body) =>
-      _send(() => _http.post(_uri(path), headers: _headers, body: jsonEncode(body)));
+  Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body, {Duration? timeout}) =>
+      _send(() => _http.post(_uri(path), headers: _headers, body: jsonEncode(body)), timeout: timeout);
 
   /// Baixa texto puro (usado no CSV de relatórios).
   Future<String> getText(String path, {Map<String, String>? query}) async {
@@ -74,9 +78,9 @@ class ApiClient {
     return utf8.decode(res.bodyBytes);
   }
 
-  Future<http.Response> _run(Future<http.Response> Function() call) async {
+  Future<http.Response> _run(Future<http.Response> Function() call, {Duration? timeout}) async {
     try {
-      return await call().timeout(_timeout);
+      return await call().timeout(timeout ?? _timeout);
     } on TimeoutException {
       throw const ApiException('O servidor demorou para responder. Tente novamente.');
     } on http.ClientException catch (e) {
@@ -106,8 +110,8 @@ class ApiClient {
     return t.length > 160 ? '${t.substring(0, 157)}...' : t;
   }
 
-  Future<Map<String, dynamic>> _send(Future<http.Response> Function() call) async {
-    final res = await _run(call);
+  Future<Map<String, dynamic>> _send(Future<http.Response> Function() call, {Duration? timeout}) async {
+    final res = await _run(call, timeout: timeout);
 
     Map<String, dynamic>? json;
     try {

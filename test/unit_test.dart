@@ -244,6 +244,8 @@ void main() {
       final a = AssistenteInfo.fromJson(fixtureJson('assistente'));
       expect(a.perguntasRapidas, hasLength(3));
       expect(a.precisao?.dias, greaterThan(0));
+      expect(a.ia, isFalse); // servidor sem IA (ou anterior a ela) não manda o campo
+      expect(AssistenteInfo.fromJson({...fixtureJson('assistente'), 'ia': true}).ia, isTrue);
       final u = Usuario.fromJson(fixtureJson('me')['usuario'] as Map<String, dynamic>);
       expect(u.perfilRotulo, 'Admin');
       expect(Usuario.fromJson(u.toJson()).empresa.nome, u.empresa.nome);

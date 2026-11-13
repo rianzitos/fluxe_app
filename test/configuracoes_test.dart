@@ -728,6 +728,57 @@ void main() {
     });
   });
 
+  group('assistente com IA', () {
+    Future<void> perguntar(WidgetTester tester, String texto) async {
+      await tester.enterText(find.byKey(const Key('campo-pergunta')), texto);
+      await tester.tap(find.byKey(const Key('btn-enviar-pergunta')));
+      await tester.pumpAndSettle();
+    }
+
+    Map<String, dynamic> corpo(http.Request r) => jsonDecode(r.body) as Map<String, dynamic>;
+
+    testWidgets('cada pergunta leva a conversa anterior; a pergunta que deu erro fica de fora', (tester) async {
+      final log = <http.Request>[];
+      var chamadas = 0;
+      await abrirApp(
+        tester,
+        fakeApi(log: log, overrides: {
+          'GET /api/assistente': (req) => jsonResposta({...fixtureJson('assistente'), 'ia': true}),
+          'POST /api/assistente': (req) {
+            chamadas++;
+            if (chamadas == 2) return jsonResposta({'sucesso': false, 'mensagem': 'Falha temporária.'}, 500);
+            return jsonResposta({'sucesso': true, 'resposta': 'Resposta $chamadas', 'ia': true, 'hora': '10:00'});
+          },
+        }),
+      );
+      await tester.tap(find.text('IA').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Com IA · seus dados e o uso do SICAPDA'), findsOneWidget);
+
+      await perguntar(tester, 'Previsão para amanhã');
+      await perguntar(tester, 'pergunta que falha');
+      await perguntar(tester, 'e para sexta?');
+
+      final posts = log.where((r) => r.method == 'POST' && r.url.path == '/api/assistente').map(corpo).toList();
+      expect(posts, hasLength(3));
+      expect(posts[0]['mensagem'], 'Previsão para amanhã');
+      // A saudação vai junto (o servidor descarta), mas a resposta ainda não existe.
+      expect((posts[0]['historico'] as List).map((m) => m['autor']), ['bot']);
+      expect(posts[2]['mensagem'], 'e para sexta?');
+      final h = (posts[2]['historico'] as List).cast<Map<String, dynamic>>();
+      expect(h.map((m) => m['texto']).skip(1), ['Previsão para amanhã', 'Resposta 1']);
+      expect(h.map((m) => m['autor']).skip(1), ['usuario', 'bot']);
+      expect(find.text('Resposta 3'), findsOneWidget);
+    });
+
+    testWidgets('servidor sem IA: mesmo subtítulo de antes', (tester) async {
+      await abrirApp(tester, fakeApi());
+      await tester.tap(find.text('IA').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Previsões de pessoas e alimentos'), findsOneWidget);
+    });
+  });
+
   group('relatórios', () {
     testWidgets('exportar usa o mesmo período que está na tela (que pode vir do período padrão da conta)', (tester) async {
       final log = <http.Request>[];
