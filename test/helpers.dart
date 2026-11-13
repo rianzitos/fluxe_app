@@ -68,7 +68,11 @@ MockClient fakeApi({
         case '/api/relatorios':
           return ok('relatorios');
         case '/api/relatorios/exportar':
-          return http.Response('Nome;Função\n', 200);
+          // formato=xlsx: a planilha do Excel (um zip, começa com "PK"); sem formato: o CSV de sempre.
+          return req.url.queryParameters['formato'] == 'xlsx'
+              ? http.Response.bytes([0x50, 0x4B, 3, 4, 20, 0], 200,
+                  headers: {'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})
+              : http.Response.bytes(utf8.encode('\uFEFFNome;Função\n'), 200, headers: {'content-type': 'text/csv; charset=utf-8'});
         case '/api/assistente':
           return ok(req.method == 'POST' ? 'assistente_post' : 'assistente');
 

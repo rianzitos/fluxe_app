@@ -204,6 +204,18 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// "Esqueci minha senha": o servidor envia por e-mail um link (válido por 1 hora) para criar uma senha nova no
+  /// navegador. Devolve a mensagem do servidor, que é a mesma exista ou não uma conta com esse e-mail.
+  Future<String> esqueciSenha(String email, {String? serverUrl}) async {
+    if (serverUrl != null && serverUrl.trim().isNotEmpty) {
+      await setBaseUrl(serverUrl);
+    }
+    final client = ApiClient(baseUrl: baseUrl, client: _httpClient);
+    final res = await client.post('/senha/esqueci', {'email': email.trim()});
+    return (res['mensagem'] as String?) ??
+        'Se este e-mail estiver cadastrado, você vai receber um link para criar uma senha nova.';
+  }
+
   Future<void> logout() async {
     _token = null;
     user = null;

@@ -9,7 +9,13 @@ bool get exportaParaPasta => !kIsWeb && Platform.isWindows;
 
 /// Salva o CSV em Downloads sem sobrescrever arquivos existentes ("nome (1).csv"...).
 /// Escreve com BOM UTF-8 para o Excel abrir os acentos corretamente.
-Future<String> salvarCsvNosDownloads(String nome, String csv, {Directory? pasta}) async {
+Future<String> salvarCsvNosDownloads(String nome, String csv, {Directory? pasta}) {
+  final semBom = csv.startsWith('\uFEFF') ? csv.substring(1) : csv;
+  return salvarNosDownloads(nome, [0xEF, 0xBB, 0xBF, ...utf8.encode(semBom)], pasta: pasta);
+}
+
+/// Salva qualquer arquivo (ex.: a planilha .xlsx do relatório) em Downloads, sem sobrescrever os existentes.
+Future<String> salvarNosDownloads(String nome, List<int> bytes, {Directory? pasta}) async {
   if (pasta == null) {
     final home = Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'];
     if (home == null || home.isEmpty) throw const FileSystemException('Pasta do usuário não encontrada');
@@ -25,8 +31,7 @@ Future<String> salvarCsvNosDownloads(String nome, String csv, {Directory? pasta}
     arquivo = File('${pasta.path}${Platform.pathSeparator}$base ($i)$ext');
   }
 
-  final semBom = csv.startsWith('﻿') ? csv.substring(1) : csv;
-  await arquivo.writeAsBytes([0xEF, 0xBB, 0xBF, ...utf8.encode(semBom)]);
+  await arquivo.writeAsBytes(bytes);
   return arquivo.path;
 }
 

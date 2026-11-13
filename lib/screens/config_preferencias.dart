@@ -138,8 +138,8 @@ class _NotificacoesTabState extends State<NotificacoesTab> with _CarregaPreferen
             children: [
               const CardTitle('Notificações'),
               const SizedBox(height: 4),
-              Text('Escolha quais eventos aparecem no sino e na lista de alertas do Painel. Vale só para a sua conta, no '
-                  'aplicativo e no site.', style: AppText.muted(context)),
+              Text('Escolha quais eventos aparecem no sino e na lista de alertas do Painel e quais e-mails automáticos '
+                  'você recebe. Vale só para a sua conta, no aplicativo e no site.', style: AppText.muted(context)),
               const SizedBox(height: 6),
               for (final n in d.notificacoes)
                 _ItemNotificacao(

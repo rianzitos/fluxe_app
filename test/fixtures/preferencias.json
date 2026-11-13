@@ -23,10 +23,17 @@
       "ativo": true
     },
     {
+      "chave": "email_desperdicio",
+      "label": "Desperdício alto por e-mail",
+      "descricao": "Um e-mail no mesmo dia em que o desperdício passar da meta (8% da produção) ou ficar bem acima da média",
+      "disponivel": true,
+      "ativo": true
+    },
+    {
       "chave": "resumo_diario",
       "label": "Resumo diário por e-mail",
-      "descricao": "Um e-mail às 08h com o resumo do dia anterior",
-      "disponivel": false,
+      "descricao": "Um e-mail às 08h com os acessos e o refeitório de ontem e a previsão do dia",
+      "disponivel": true,
       "ativo": false
     }
   ],

@@ -64,6 +64,19 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// Pede o e-mail (já preenchido com o do login) e o servidor envia o link para criar uma senha nova.
+  Future<void> _esqueciSenha() async {
+    FocusScope.of(context).unfocus();
+    final controller = AppScope.read(context);
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _EsqueciSenhaDialog(
+        emailInicial: _email.text.trim(),
+        enviar: (email) => controller.esqueciSenha(email, serverUrl: _servidor.text),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -131,7 +144,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           validator: (v) => (v == null || v.isEmpty) ? 'Informe sua senha' : null,
                         ),
-                        const SizedBox(height: 26),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            key: const Key('esqueci-senha'),
+                            onPressed: _loading ? null : _esqueciSenha,
+                            style: TextButton.styleFrom(foregroundColor: AppColors.accent),
+                            child: const Text('Esqueci minha senha', style: TextStyle(fontSize: 13.5)),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
                         _loginButton(),
                         const SizedBox(height: 14),
                         _serverSection(),
@@ -346,4 +368,146 @@ class _LoginScreenState extends State<LoginScreen> {
           )),
         ],
       );
+}
+
+/// Janela do "Esqueci minha senha": e-mail → o servidor envia o link de redefinição (o mesmo do site).
+class _EsqueciSenhaDialog extends StatefulWidget {
+  final String emailInicial;
+  final Future<String> Function(String email) enviar;
+
+  const _EsqueciSenhaDialog({required this.emailInicial, required this.enviar});
+
+  @override
+  State<_EsqueciSenhaDialog> createState() => _EsqueciSenhaDialogState();
+}
+
+class _EsqueciSenhaDialogState extends State<_EsqueciSenhaDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final _email = TextEditingController(text: widget.emailInicial);
+  bool _enviando = false;
+  String? _erro;
+  String? _enviado;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    super.dispose();
+  }
+
+  Future<void> _enviar() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _enviando = true;
+      _erro = null;
+    });
+    try {
+      final mensagem = await widget.enviar(_email.text.trim());
+      if (mounted) setState(() => _enviado = mensagem);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _erro = e.message);
+    } catch (_) {
+      if (mounted) setState(() => _erro = 'Não foi possível enviar agora. Tente novamente.');
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const texto = TextStyle(color: AppColors.loginMuted, fontSize: 14, height: 1.4);
+
+    return AlertDialog(
+      backgroundColor: AppColors.blackSoft,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      title: const Text('Esqueci minha senha', style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w600)),
+      content: SizedBox(
+        width: 380,
+        child: _enviado != null
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.mark_email_read_outlined, color: AppColors.accent, size: 26),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text('$_enviado\n\nAbra o link do e-mail para criar a senha nova e depois entre aqui com ela.',
+                        key: const Key('esqueci-enviado'), style: texto),
+                  ),
+                ],
+              )
+            : Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('Informe o e-mail da sua conta. Enviaremos um link para você criar uma senha nova.', style: texto),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      key: const Key('esqueci-email'),
+                      controller: _email,
+                      enabled: !_enviando,
+                      autofocus: widget.emailInicial.isEmpty,
+                      keyboardType: TextInputType.emailAddress,
+                      autofillHints: const [AutofillHints.email],
+                      onFieldSubmitted: (_) => _enviar(),
+                      style: const TextStyle(color: Colors.white, fontSize: 15),
+                      validator: (v) {
+                        final t = v?.trim() ?? '';
+                        if (t.isEmpty) return 'Informe seu e-mail';
+                        if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(t)) return 'Informe um e-mail válido';
+                        return null;
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'seuemail@empresa.com',
+                        hintStyle: const TextStyle(color: AppColors.loginHint, fontSize: 14),
+                        prefixIcon: const Icon(Icons.mail_outline_rounded, color: AppColors.accent, size: 20),
+                        filled: true,
+                        fillColor: AppColors.loginField,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.loginBorder),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.loginBorder),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.accent, width: 1.4),
+                        ),
+                      ),
+                    ),
+                    if (_erro != null) ...[
+                      const SizedBox(height: 12),
+                      Text(_erro!, key: const Key('esqueci-erro'), style: const TextStyle(color: Color(0xFFFFB4B4), fontSize: 13)),
+                    ],
+                  ],
+                ),
+              ),
+      ),
+      actions: _enviado != null
+          ? [
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: FilledButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: Colors.black),
+                child: const Text('Entendi'),
+              ),
+            ]
+          : [
+              TextButton(
+                onPressed: _enviando ? null : () => Navigator.of(context).pop(),
+                style: TextButton.styleFrom(foregroundColor: AppColors.loginMuted),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                key: const Key('esqueci-enviar'),
+                onPressed: _enviando ? null : _enviar,
+                style: FilledButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: Colors.black),
+                child: _enviando
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.black))
+                    : const Text('Enviar link'),
+              ),
+            ],
+    );
+  }
 }

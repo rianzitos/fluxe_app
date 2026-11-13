@@ -144,13 +144,19 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> with TabRefresh {
     final messenger = ScaffoldMessenger.of(context);
     try {
       // O mesmo período que está na tela (que pode ter vindo do período padrão da conta, escolhido em Configurações).
+      // formato=xlsx: planilha do Excel com datas de verdade e colunas na largura certa (o CSV aberto no Excel
+      // mostrava "########" nas datas).
       final q = _query
         ..remove('pagina')
-        ..addAll({if (_deAplicado.isNotEmpty) 'de': _deAplicado, if (_ateAplicado.isNotEmpty) 'ate': _ateAplicado});
-      final csv = await AppScope.read(context).api.getText('/relatorios/exportar', query: q);
-      final nome = 'relatorio-acessos_${_deAplicado}_a_$_ateAplicado.csv';
+        ..addAll({
+          if (_deAplicado.isNotEmpty) 'de': _deAplicado,
+          if (_ateAplicado.isNotEmpty) 'ate': _ateAplicado,
+          'formato': 'xlsx',
+        });
+      final bytes = await AppScope.read(context).api.getBytes('/relatorios/exportar', query: q);
+      final tipo = tipoDoRelatorio(bytes, 'relatorio-acessos_${_deAplicado}_a_$_ateAplicado');
       if (!mounted) return;
-      await entregarCsv(context, nome: nome, csv: csv, assunto: 'Relatório de acessos');
+      await entregarArquivo(context, nome: tipo.nome, bytes: bytes, mimeType: tipo.mimeType, assunto: 'Relatório de acessos');
     } on ApiException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {
@@ -175,7 +181,7 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> with TabRefresh {
           onMenu: widget.onMenu,
           actions: [
             IconButton(
-              tooltip: 'Exportar CSV',
+              tooltip: 'Exportar Excel',
               onPressed: _exportando ? null : _exportar,
               icon: _exportando
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent))
