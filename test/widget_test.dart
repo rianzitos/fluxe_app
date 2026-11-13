@@ -129,6 +129,62 @@ void main() {
     expect(find.byKey(const Key('aviso-http')), findsNothing);
   });
 
+  testWidgets('esqueci minha senha: envia o e-mail digitado e mostra a resposta do servidor', (tester) async {
+    final log = <http.Request>[];
+    final c = await newController(client: fakeApi(log: log, overrides: {
+      'POST /api/senha/esqueci': (_) => jsonResposta({
+            'sucesso': true,
+            'mensagem': 'Se este e-mail estiver cadastrado, você vai receber em instantes um link para criar uma senha nova.',
+          }),
+    }));
+    await pumpApp(tester, c);
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'rian@fluxe.com');
+    await tester.tap(find.byKey(const Key('esqueci-senha')));
+    await tester.pumpAndSettle();
+
+    // O e-mail do login já vem preenchido
+    expect(find.text('Esqueci minha senha'), findsNWidgets(2)); // botão + título da janela
+    expect(tester.widget<TextFormField>(find.byKey(const Key('esqueci-email'))).controller!.text, 'rian@fluxe.com');
+
+    await tester.tap(find.byKey(const Key('esqueci-enviar')));
+    await tester.pumpAndSettle();
+
+    final pedido = log.lastWhere((r) => r.url.path == '/api/senha/esqueci');
+    expect(pedido.method, 'POST');
+    expect(pedido.body, '{"email":"rian@fluxe.com"}');
+    expect(pedido.headers['Authorization'], isNull); // rota pública, sem token
+    expect(find.byKey(const Key('esqueci-enviado')), findsOneWidget);
+    expect(find.textContaining('Se este e-mail estiver cadastrado'), findsOneWidget);
+
+    await tester.tap(find.text('Entendi'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('esqueci-enviado')), findsNothing);
+    expect(c.isLoggedIn, isFalse);
+  });
+
+  testWidgets('esqueci minha senha: valida o e-mail e mostra o erro do servidor', (tester) async {
+    final log = <http.Request>[];
+    final c = await newController(client: fakeApi(log: log, overrides: {
+      'POST /api/senha/esqueci': (_) => jsonResposta(
+          {'sucesso': false, 'mensagem': 'Muitos pedidos seguidos. Aguarde alguns minutos e tente de novo.'}, 429),
+    }));
+    await pumpApp(tester, c);
+
+    await tester.tap(find.byKey(const Key('esqueci-senha')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('esqueci-enviar')));
+    await tester.pumpAndSettle();
+    expect(find.text('Informe seu e-mail'), findsOneWidget);
+    expect(log.where((r) => r.url.path == '/api/senha/esqueci'), isEmpty);
+
+    await tester.enterText(find.byKey(const Key('esqueci-email')), 'rian@fluxe.com');
+    await tester.tap(find.byKey(const Key('esqueci-enviar')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('esqueci-erro')), findsOneWidget);
+    expect(find.textContaining('Muitos pedidos seguidos'), findsOneWidget);
+  });
+
   testWidgets('campos vazios são validados antes de chamar a API', (tester) async {
     final c = await newController();
     await pumpApp(tester, c);

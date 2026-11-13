@@ -90,8 +90,10 @@ void main() {
   group('modelos (JSON real da API)', () {
     test('preferências: catálogo de notificações, sistema e opções', () {
       final p = PreferenciasData.fromJson(fixtureJson('preferencias'));
-      expect(p.notificacoes.map((n) => n.chave), ['previsao_demanda', 'acesso_negado', 'dispositivo_offline', 'resumo_diario']);
-      expect(p.notificacoes.last.disponivel, isFalse);
+      expect(p.notificacoes.map((n) => n.chave),
+          ['previsao_demanda', 'acesso_negado', 'dispositivo_offline', 'email_desperdicio', 'resumo_diario']);
+      expect(p.notificacoes.every((n) => n.disponivel), isTrue);
+      expect(p.notificacoes.last.ativo, isFalse); // o resumo por e-mail vem desligado: a pessoa escolhe receber
       expect(p.periodoPadrao, 'mes');
       expect(p.itensPagina, 20);
       expect(p.periodos.map((o) => o.valor), ['mes', '7', '30', '90']);
@@ -306,16 +308,21 @@ void main() {
   });
 
   group('Configurações → Notificações e Sistema', () {
-    testWidgets('liga/desliga um alerta (o "Em breve" fica travado) e o sino é atualizado', (tester) async {
+    testWidgets('liga/desliga um alerta, inclusive os e-mails automáticos, e o sino é atualizado', (tester) async {
       final log = <http.Request>[];
       await abrirApp(tester, fakeApi(log: log));
       await abrirConfig(tester, 'notificacoes');
 
       expect(find.text('Tentativas de acesso não autorizado'), findsOneWidget);
-      expect(find.text('Em breve'), findsOneWidget);
+      expect(find.text('Desperdício alto por e-mail'), findsOneWidget);
+      expect(find.text('Em breve'), findsNothing);
       final resumo = tester.widget<Switch>(find.byKey(const Key('notificacao-resumo_diario')));
-      expect(resumo.onChanged, isNull);
+      expect(resumo.onChanged, isNotNull);
       expect(resumo.value, isFalse);
+
+      await tocar(tester, find.byKey(const Key('notificacao-resumo_diario')));
+      expect(corpoDe(log, 'POST', '/api/preferencias/notificacao'), {'chave': 'resumo_diario', 'ativo': true});
+      expect(tester.widget<Switch>(find.byKey(const Key('notificacao-resumo_diario'))).value, isTrue);
 
       await tocar(tester, find.byKey(const Key('notificacao-acesso_negado')));
       expect(corpoDe(log, 'POST', '/api/preferencias/notificacao'), {'chave': 'acesso_negado', 'ativo': false});
