@@ -866,3 +866,108 @@ class EstadoAoVivo {
         novosAcessos: _i(j['novosAcessos']),
       );
 }
+
+// ─── Produção de refeições (/api/producao) ─────────────────────────────────
+
+class ProducaoRefeicao {
+  final String tipo; // cafe | almoco | jantar | ceia
+  final String rotulo;
+  final double? previsto;
+  final double? produzido;
+  final double? desperdicado;
+  final bool registrado;
+
+  const ProducaoRefeicao({
+    required this.tipo,
+    required this.rotulo,
+    this.previsto,
+    this.produzido,
+    this.desperdicado,
+    this.registrado = false,
+  });
+
+  factory ProducaoRefeicao.fromJson(Map<String, dynamic> j) => ProducaoRefeicao(
+        tipo: _s(j['tipo']),
+        rotulo: _s(j['rotulo']),
+        previsto: _d(j['previsto']),
+        produzido: _d(j['produzido']),
+        desperdicado: _d(j['desperdicado']),
+        registrado: _b(j['registrado']),
+      );
+}
+
+class ProducaoHistorico {
+  final String data; // yyyy-MM-dd
+  final double previsto;
+  final double produzido;
+  final double desperdicado;
+  final double? percentual;
+
+  const ProducaoHistorico({
+    required this.data,
+    this.previsto = 0,
+    this.produzido = 0,
+    this.desperdicado = 0,
+    this.percentual,
+  });
+
+  factory ProducaoHistorico.fromJson(Map<String, dynamic> j) => ProducaoHistorico(
+        data: _s(j['data']),
+        previsto: _d(j['previsto']) ?? 0,
+        produzido: _d(j['produzido']) ?? 0,
+        desperdicado: _d(j['desperdicado']) ?? 0,
+        percentual: _d(j['percentual']),
+      );
+}
+
+/// Um dia da tela Produção: as 4 refeições, totais, a previsão do sistema e os últimos 14 dias.
+class ProducaoDia {
+  final String data;
+  final String hoje;
+  final List<ProducaoRefeicao> refeicoes;
+  final double totalProduzido;
+  final double totalDesperdicado;
+  final double? percentual;
+  final int pessoasPrevistas;
+  final double? kgSugerido;
+  final String? feriado;
+  final List<ProducaoHistorico> historico;
+  final double metaDesperdicio;
+  final bool temBalanca;
+
+  const ProducaoDia({
+    required this.data,
+    required this.hoje,
+    required this.refeicoes,
+    this.totalProduzido = 0,
+    this.totalDesperdicado = 0,
+    this.percentual,
+    this.pessoasPrevistas = 0,
+    this.kgSugerido,
+    this.feriado,
+    this.historico = const [],
+    this.metaDesperdicio = 8,
+    this.temBalanca = false,
+  });
+
+  double get totalPrevisto => refeicoes.fold(0, (s, r) => s + (r.previsto ?? 0));
+
+  factory ProducaoDia.fromJson(Map<String, dynamic> j) {
+    final totais = (j['totais'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final sugestao = (j['sugestao'] as Map?)?.cast<String, dynamic>() ?? const {};
+    return ProducaoDia(
+      data: _s(j['data']),
+      hoje: _s(j['hoje']),
+      refeicoes: _list(j['refeicoes']).map(ProducaoRefeicao.fromJson).toList(),
+      totalProduzido: _d(totais['produzido']) ?? 0,
+      totalDesperdicado: _d(totais['desperdicado']) ?? 0,
+      percentual: _d(totais['percentual']),
+      pessoasPrevistas: _i(sugestao['pessoas']),
+      kgSugerido: _d(sugestao['kg']),
+      feriado: sugestao['feriado'] as String?,
+      historico: _list(j['historico']).map(ProducaoHistorico.fromJson).toList(),
+      metaDesperdicio: _d(j['metaDesperdicio']) ?? 8,
+      temBalanca: _b(j['temBalanca']),
+    );
+  }
+}

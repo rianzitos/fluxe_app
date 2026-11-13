@@ -698,6 +698,9 @@ void main() {
       if (tela.width > tela.height) {
         // deitado, o menu lateral (fixo) é mais alto que a tela: rola até o item
         await tester.scrollUntilVisible(find.text('Assistente IA'), 60, scrollable: find.byType(Scrollable).first);
+        // A lista monta itens um pouco abaixo da área visível: garante que o item está mesmo na tela antes do toque.
+        await tester.ensureVisible(find.text('Assistente IA').last);
+        await tester.pumpAndSettle();
       }
       await tester.tap(find.text(tela.width > tela.height ? 'Assistente IA' : 'IA').last);
       await tester.pumpAndSettle();

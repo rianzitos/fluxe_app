@@ -57,6 +57,7 @@ O login usa os **mesmos usuários e senhas da web**.
 | **Login** | `/login` | E-mail e senha; **Esqueci minha senha** (o servidor envia por e-mail o link para criar uma senha nova, o mesmo do site); campo opcional para trocar o endereço do servidor |
 | **Painel** | `/painel` | Usuários ativos, acessos, refeições previstas, acurácia, gráfico de previsão de demanda, distribuição de refeições, previsão das próximas horas, alertas e recomendações |
 | **Análise mensal** | `/acessos` | Total produzido/desperdiçado, média de pessoas, gráficos diários e insights do mês, com seletor de mês |
+| **Produção** | `/producao` | Menu lateral (e atalho na Análise mensal): quilos produzidos e desperdiçados por refeição em cada dia, com o previsto pela previsão, o % de desperdício contra a meta e os últimos 14 dias para corrigir. Alimenta o painel, a análise e a previsão |
 | **Pessoas** | `/pessoas` | Duas abas: **Presentes agora** (quem está no local, por grupo, com busca) e **Cadastro** (pessoas e cartões; o administrador adiciona, edita, vincula cartões, ativa/desativa e importa planilha) |
 | **Assistente IA** | `/assistente` | Chat com previsões (amanhã, sexta, semanal), desperdício, precisão, feriados; perguntas rápidas |
 | **Relatórios** | `/relatorios` | Registros de acesso com filtro por período, nome/função e categoria; paginação; exportação em planilha do Excel (`.xlsx`, com as datas legíveis; num SystemFluxe antigo vem o CSV). Abre com o período padrão e os itens por página escolhidos em Configurações → Sistema |
@@ -259,6 +260,7 @@ lib/
 │   ├── api_client.dart        # Cliente HTTP (Bearer token, erros, timeout)
 │   ├── cadastro_service.dart  # Cadastro de pessoas e cartões na API (+ normalização e regra do UID)
 │   ├── config_service.dart    # Configurações na API: perfil, senha, foto, preferências, sessões, IoT, sino, planilha
+│   ├── producao_service.dart  # Produção de refeições na API (GET/POST /api/producao)
 │   ├── ao_vivo.dart           # Tempo real (GET /api/aovivo): mudanças e acessos novos
 │   ├── arquivos.dart          # Escolher arquivo (CSV/foto), reduzir a foto, entregar o arquivo (compartilhar/Downloads)
 │   ├── versao.dart            # Versão mostrada no app (igual ao pubspec.yaml; um teste confere)
@@ -282,6 +284,7 @@ lib/
     ├── painel_screen.dart
     ├── analise_screen.dart
     ├── pessoas_screen.dart        # Abas "Presentes agora" e "Cadastro"
+    ├── producao_screen.dart       # Produção: quilos produzidos e desperdiçados por refeição e dia
     ├── cadastro_pessoas.dart      # Aba Cadastro: lista, busca, ações por pessoa e por cartão
     ├── cadastro_formularios.dart  # Formulários (adicionar/editar pessoa, vincular cartão) e lista de cartões lidos nas catracas
     ├── cadastro_importar.dart     # Importar planilha (CSV) e baixar o modelo
@@ -328,6 +331,7 @@ Todas as rotas ficam no SystemFluxe e, exceto o login, exigem o cabeçalho `Auth
 | `POST` | `/api/pessoas/importar` | `{csv}`: texto da planilha; devolve pessoas, cartões, linhas ignoradas e o motivo de cada uma (**administrador**) |
 | `GET` | `/api/pessoas/modelo` | Modelo da planilha (CSV) |
 | `GET` | `/api/relatorios?de&ate&busca&categoria&pagina` | Registros de acesso paginados (sem `de`, usa o período padrão da conta; itens por página da conta) |
+| `GET` / `POST` | `/api/producao` | `?data=yyyy-MM-dd`: o dia (refeições, totais, previsão e últimos 14 dias); `POST {data, itens: [{tipo, produzido, desperdicado?}]}` grava e devolve o dia |
 | `GET` | `/api/relatorios/exportar` | Os mesmos filtros; `?formato=xlsx` devolve a planilha do Excel (o app usa esta), sem o parâmetro devolve CSV |
 | `GET` / `POST` | `/api/assistente` | Informações do assistente / enviar pergunta `{mensagem}` |
 | `POST` | `/api/perfil` | `{nome, email, cargo, senha_atual?}` (trocar o e-mail exige a senha atual); devolve o `usuario` atualizado |

@@ -13,6 +13,7 @@ import 'assistente_screen.dart';
 import 'configuracoes_screen.dart';
 import 'painel_screen.dart';
 import 'pessoas_screen.dart';
+import 'producao_screen.dart';
 import 'relatorios_screen.dart';
 
 class _Destino {
@@ -147,6 +148,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     };
     if (aba != null) {
       _select(aba);
+    } else if (caminho == '/producao') {
+      _openProducao();
     } else if (caminho == '/configuracoes') {
       _openConfig(abaDoLink(link));
     }
@@ -172,6 +175,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       3 => AssistenteScreen(onMenu: _openMenu),
       _ => RelatoriosScreen(onMenu: _openMenu, tabRefresh: _ticks[4]),
     };
+  }
+
+  /// Produção abre por cima (como Configurações): é uma tela de cadastro, não uma aba de consulta.
+  void _openProducao() {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ProducaoScreen()));
   }
 
   void _openConfig([AbaConfig aba = AbaConfig.perfil]) {
@@ -205,7 +213,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           children: [
             SizedBox(
               width: kSidebarWidth,
-              child: _SideMenu(fixed: true, selected: _index, onSelect: _select, onConfig: _openConfig),
+              child: _SideMenu(
+                fixed: true,
+                selected: _index,
+                onSelect: _select,
+                onConfig: _openConfig,
+                onProducao: _openProducao,
+              ),
             ),
             Expanded(
               child: Align(
@@ -229,6 +243,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         onConfig: () {
           Navigator.of(context).pop();
           _openConfig();
+        },
+        onProducao: () {
+          Navigator.of(context).pop();
+          _openProducao();
         },
       ),
       body: conteudo,
@@ -261,8 +279,15 @@ class _SideMenu extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onSelect;
   final VoidCallback onConfig;
+  final VoidCallback onProducao;
 
-  const _SideMenu({this.fixed = false, required this.selected, required this.onSelect, required this.onConfig});
+  const _SideMenu({
+    this.fixed = false,
+    required this.selected,
+    required this.onSelect,
+    required this.onConfig,
+    required this.onProducao,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -285,13 +310,17 @@ class _SideMenu extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 children: [
-                  for (var i = 0; i < _destinos.length; i++)
+                  for (var i = 0; i < _destinos.length; i++) ...[
                     _MenuItem(
                       label: _destinos[i].label,
                       icon: _destinos[i].iconSelected,
                       active: i == selected,
                       onTap: () => onSelect(i),
                     ),
+                    // Mesma ordem do menu do site: Painel, Análise mensal, Produção, Pessoas...
+                    if (i == 1)
+                      _MenuItem(label: 'Produção', icon: Icons.restaurant_rounded, active: false, onTap: onProducao),
+                  ],
                   _MenuItem(
                     label: 'Configurações',
                     icon: Icons.settings_rounded,

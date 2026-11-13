@@ -1,0 +1,153 @@
+{
+  "sucesso": true,
+  "dia": {
+    "data": "2026-11-12",
+    "hoje": "2026-11-13",
+    "refeicoes": [
+      {
+        "tipo": "cafe",
+        "rotulo": "Café da manhã",
+        "previsto": 5.0,
+        "produzido": 5.32,
+        "desperdicado": 0.37,
+        "registrado": true
+      },
+      {
+        "tipo": "almoco",
+        "rotulo": "Almoço",
+        "previsto": 18.4,
+        "produzido": 18.63,
+        "desperdicado": 1.22,
+        "registrado": true
+      },
+      {
+        "tipo": "jantar",
+        "rotulo": "Jantar",
+        "previsto": 7.0,
+        "produzido": 7.89,
+        "desperdicado": 0.51,
+        "registrado": true
+      },
+      {
+        "tipo": "ceia",
+        "rotulo": "Ceia",
+        "previsto": 2.1,
+        "produzido": 2.32,
+        "desperdicado": 0.13,
+        "registrado": true
+      }
+    ],
+    "totais": {
+      "produzido": 34.16,
+      "desperdicado": 2.23,
+      "percentual": 6.5
+    },
+    "sugestao": {
+      "pessoas": 38,
+      "kg": 33.3,
+      "feriado": null
+    },
+    "historico": [
+      {
+        "data": "2026-11-13",
+        "previsto": 24.8,
+        "produzido": 26.0,
+        "desperdicado": 3.0,
+        "percentual": 11.5
+      },
+      {
+        "data": "2026-11-12",
+        "previsto": 32.6,
+        "produzido": 34.2,
+        "desperdicado": 2.2,
+        "percentual": 6.5
+      },
+      {
+        "data": "2026-11-11",
+        "previsto": 32.2,
+        "produzido": 32.4,
+        "desperdicado": 2.5,
+        "percentual": 7.6
+      },
+      {
+        "data": "2026-11-10",
+        "previsto": 35.2,
+        "produzido": 37.7,
+        "desperdicado": 2.7,
+        "percentual": 7.3
+      },
+      {
+        "data": "2026-11-09",
+        "previsto": 33.0,
+        "produzido": 35.9,
+        "desperdicado": 2.7,
+        "percentual": 7.6
+      },
+      {
+        "data": "2026-11-08",
+        "previsto": 17.2,
+        "produzido": 18.4,
+        "desperdicado": 1.3,
+        "percentual": 7.2
+      },
+      {
+        "data": "2026-11-07",
+        "previsto": 24.1,
+        "produzido": 26.4,
+        "desperdicado": 1.7,
+        "percentual": 6.3
+      },
+      {
+        "data": "2026-11-06",
+        "previsto": 29.5,
+        "produzido": 31.5,
+        "desperdicado": 2.2,
+        "percentual": 7.1
+      },
+      {
+        "data": "2026-11-05",
+        "previsto": 29.7,
+        "produzido": 31.7,
+        "desperdicado": 2.1,
+        "percentual": 6.6
+      },
+      {
+        "data": "2026-11-04",
+        "previsto": 35.7,
+        "produzido": 36.1,
+        "desperdicado": 3.1,
+        "percentual": 8.5
+      },
+      {
+        "data": "2026-11-03",
+        "previsto": 32.7,
+        "produzido": 34.5,
+        "desperdicado": 2.2,
+        "percentual": 6.4
+      },
+      {
+        "data": "2026-11-02",
+        "previsto": 13.5,
+        "produzido": 14.5,
+        "desperdicado": 1.1,
+        "percentual": 7.3
+      },
+      {
+        "data": "2026-11-01",
+        "previsto": 10.9,
+        "produzido": 11.5,
+        "desperdicado": 0.8,
+        "percentual": 7.1
+      },
+      {
+        "data": "2026-10-31",
+        "previsto": 23.4,
+        "produzido": 24.7,
+        "desperdicado": 1.6,
+        "percentual": 6.4
+      }
+    ],
+    "metaDesperdicio": 8.0,
+    "temBalanca": false
+  }
+}

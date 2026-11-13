@@ -68,6 +68,7 @@ IconData iconeCard(String chave) => switch (chave) {
       'acuracia' => Icons.show_chart_rounded,
       'produzido' => Icons.trending_up_rounded,
       'desperdicado' => Icons.trending_down_rounded,
+      'percentual' || 'percentual_alto' => Icons.percent_rounded,
       'pessoas' => Icons.groups_rounded,
       'total' => Icons.groups_rounded,
       'operadores' => Icons.settings_rounded,
