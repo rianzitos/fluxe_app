@@ -88,21 +88,41 @@ Future<Uint8List> prepararFotoDePerfil(Uint8List original, {int lado = 512}) asy
   }
 }
 
-/// Entrega um CSV para a pessoa: no Windows salva na pasta Downloads (e oferece abrir a pasta); no celular e no
+/// Entrega um CSV para a pessoa (o modelo da planilha de importação). Veja [entregarArquivo].
+Future<void> entregarCsv(BuildContext context, {required String nome, required String csv, required String assunto}) {
+  final semBom = csv.startsWith('\uFEFF') ? csv.substring(1) : csv;
+  return entregarArquivo(context,
+      nome: nome, bytes: Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(semBom)]), mimeType: 'text/csv', assunto: assunto);
+}
+
+/// Entrega um arquivo para a pessoa: no Windows salva na pasta Downloads (e oferece abrir a pasta); no celular e no
 /// navegador abre a folha de compartilhar/salvar do sistema. Usado no relatório exportado e no modelo da planilha.
-Future<void> entregarCsv(BuildContext context, {required String nome, required String csv, required String assunto}) async {
+Future<void> entregarArquivo(BuildContext context,
+    {required String nome, required Uint8List bytes, required String mimeType, required String assunto}) async {
   final messenger = ScaffoldMessenger.of(context);
   if (exportaParaPasta) {
-    final caminho = await salvarCsvNosDownloads(nome, csv);
+    final caminho = await salvarNosDownloads(nome, bytes);
     messenger.showSnackBar(SnackBar(
       content: Text('$nome salvo na pasta Downloads.'),
       action: SnackBarAction(label: 'Abrir pasta', onPressed: () => mostrarNaPasta(caminho)),
     ));
     return;
   }
-  await SharePlus.instance.share(ShareParams(
-    files: [XFile.fromData(utf8.encode(csv), mimeType: 'text/csv', name: nome)],
+  await compartilharArquivo(ShareParams(
+    files: [XFile.fromData(bytes, mimeType: mimeType, name: nome)],
     fileNameOverrides: [nome],
     subject: assunto,
   ));
 }
+
+/// Abre a folha de compartilhar/salvar do sistema. Trocável nos testes (não existe essa folha num teste de widget).
+Future<void> Function(ShareParams params) compartilharArquivo = (params) => SharePlus.instance.share(params);
+
+const mimeXlsx = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+/// Nome e tipo do relatório baixado. O servidor manda a planilha do Excel (.xlsx, um arquivo zip: começa com "PK");
+/// um SystemFluxe antigo, sem essa opção, responde CSV, que então é salvo como .csv para abrir certo.
+({String nome, String mimeType}) tipoDoRelatorio(Uint8List bytes, String nomeBase) =>
+    bytes.length >= 2 && bytes[0] == 0x50 && bytes[1] == 0x4B
+        ? (nome: '$nomeBase.xlsx', mimeType: mimeXlsx)
+        : (nome: '$nomeBase.csv', mimeType: 'text/csv');

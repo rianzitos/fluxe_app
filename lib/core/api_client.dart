@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -66,6 +67,13 @@ class ApiClient {
 
   Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body) =>
       _send(() => _http.post(_uri(path), headers: _headers, body: jsonEncode(body)));
+
+  /// Baixa um arquivo binário (a planilha .xlsx do relatório).
+  Future<Uint8List> getBytes(String path, {Map<String, String>? query}) async {
+    final res = await _run(() => _http.get(_uri(path, query), headers: _headers));
+    if (res.statusCode >= 400) _throwFrom(res);
+    return res.bodyBytes;
+  }
 
   /// Baixa texto puro (usado no CSV de relatórios).
   Future<String> getText(String path, {Map<String, String>? query}) async {

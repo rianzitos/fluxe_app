@@ -59,7 +59,7 @@ O login usa os **mesmos usuários e senhas da web**.
 | **Análise mensal** | `/acessos` | Total produzido/desperdiçado, média de pessoas, gráficos diários e insights do mês, com seletor de mês |
 | **Pessoas** | `/pessoas` | Duas abas: **Presentes agora** (quem está no local, por grupo, com busca) e **Cadastro** (pessoas e cartões; o administrador adiciona, edita, vincula cartões, ativa/desativa e importa planilha) |
 | **Assistente IA** | `/assistente` | Chat com previsões (amanhã, sexta, semanal), desperdício, precisão, feriados; perguntas rápidas |
-| **Relatórios** | `/relatorios` | Registros de acesso com filtro por período, nome/função e categoria; paginação; exportação em CSV. Abre com o período padrão e os itens por página escolhidos em Configurações → Sistema |
+| **Relatórios** | `/relatorios` | Registros de acesso com filtro por período, nome/função e categoria; paginação; exportação em planilha do Excel (`.xlsx`, com as datas legíveis; num SystemFluxe antigo vem o CSV). Abre com o período padrão e os itens por página escolhidos em Configurações → Sistema |
 | **Configurações** | `/configuracoes` | As mesmas abas do site: **Perfil**, **Aparência**, **Notificações**, **Sistema**, **Integrações** (dispositivos IoT) e **Segurança**, mais **Aplicativo** (servidor, versão e sair). Detalhes abaixo |
 
 Outros detalhes: menu lateral escuro igual ao da web (no computador ele fica sempre visível e os cartões de resumo ficam lado a lado; no celular é um menu deslizante com barra de abas inferior), a logo oficial do SICAPDA, **atalho de IoT e sino** no cabeçalho (como no site), **tempo real**, *pull-to-refresh* em todas as telas, tema claro e escuro, e identidade visual idêntica à web (cores `#0D0D0D` / `#FFC107`, fontes **Sora** e **Inter**).
@@ -219,7 +219,7 @@ Depois do build, o `publicar_app.ps1` e o CI tiram os renderizadores que o naveg
 - Instala só para o usuário atual (**não pede senha de administrador**), em português, com atalhos no Menu Iniciar e na Área de Trabalho. Um instalador mais novo atualiza o programa por cima do antigo.
 - Funciona no Windows 10 ou superior (64 bits) e leva junto as DLLs do Visual C++, então não depende de nada instalado no computador do cliente.
 - **Aviso do SmartScreen:** o instalador ainda não tem assinatura digital (isso exige um certificado de assinatura de código, que é pago). Na primeira execução o Windows pode mostrar "O Windows protegeu o seu computador": clique em **Mais informações → Executar assim mesmo**.
-- No Windows, a exportação do relatório em CSV salva o arquivo na pasta **Downloads** (com botão para abrir a pasta).
+- No Windows, a exportação do relatório (planilha `.xlsx`) salva o arquivo na pasta **Downloads** (com botão para abrir a pasta).
 
 ### Assinatura do APK (importante para atualizações)
 
@@ -260,12 +260,12 @@ lib/
 │   ├── cadastro_service.dart  # Cadastro de pessoas e cartões na API (+ normalização e regra do UID)
 │   ├── config_service.dart    # Configurações na API: perfil, senha, foto, preferências, sessões, IoT, sino, planilha
 │   ├── ao_vivo.dart           # Tempo real (GET /api/aovivo): mudanças e acessos novos
-│   ├── arquivos.dart          # Escolher arquivo (CSV/foto), reduzir a foto, entregar CSV (compartilhar/Downloads)
+│   ├── arquivos.dart          # Escolher arquivo (CSV/foto), reduzir a foto, entregar o arquivo (compartilhar/Downloads)
 │   ├── versao.dart            # Versão mostrada no app (igual ao pubspec.yaml; um teste confere)
 │   ├── app_state.dart         # Sessão, token seguro, servidor, tema, alertas, tempo real
 │   ├── theme.dart             # Identidade visual (claro/escuro), cores e fontes
 │   ├── layout.dart            # Ponto de corte celular × PC (menu lateral fixo)
-│   ├── salvar_arquivo.dart    # Exportação do CSV para a pasta Downloads (Windows)
+│   ├── salvar_arquivo.dart    # Salvar o relatório/planilha na pasta Downloads (Windows)
 │   └── format.dart            # Números e datas em pt-BR
 ├── models/
 │   └── models.dart            # Modelos que espelham o JSON da API
@@ -328,7 +328,7 @@ Todas as rotas ficam no SystemFluxe e, exceto o login, exigem o cabeçalho `Auth
 | `POST` | `/api/pessoas/importar` | `{csv}`: texto da planilha; devolve pessoas, cartões, linhas ignoradas e o motivo de cada uma (**administrador**) |
 | `GET` | `/api/pessoas/modelo` | Modelo da planilha (CSV) |
 | `GET` | `/api/relatorios?de&ate&busca&categoria&pagina` | Registros de acesso paginados (sem `de`, usa o período padrão da conta; itens por página da conta) |
-| `GET` | `/api/relatorios/exportar` | CSV com os mesmos filtros |
+| `GET` | `/api/relatorios/exportar` | Os mesmos filtros; `?formato=xlsx` devolve a planilha do Excel (o app usa esta), sem o parâmetro devolve CSV |
 | `GET` / `POST` | `/api/assistente` | Informações do assistente / enviar pergunta `{mensagem}` |
 | `POST` | `/api/perfil` | `{nome, email, cargo, senha_atual?}` (trocar o e-mail exige a senha atual); devolve o `usuario` atualizado |
 | `POST` | `/api/perfil/senha` | `{senha_atual, senha_nova, senha_confirmar}` |
