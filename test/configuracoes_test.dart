@@ -502,6 +502,135 @@ void main() {
       expect(corpoDe(log, 'POST', '/api/sessoes/encerrar'), {'todas': true});
     });
 
+    testWidgets('verificação em duas etapas: ativar pelo aplicativo autenticador (QR Code, chave e códigos de recuperação)', (tester) async {
+      final log = <http.Request>[];
+      ShareParams? compartilhado;
+      compartilharArquivo = (params) async => compartilhado = params;
+      addTearDown(() => compartilharArquivo = (params) => SharePlus.instance.share(params));
+      await abrirApp(tester, fakeApi(log: log));
+      await abrirConfig(tester, 'seguranca');
+
+      // Escolhida no cadastro e ainda não configurada: o convite aparece
+      await rolarAte(tester, find.byKey(const Key('2fa-convite')));
+      expect(find.text('Desativada'), findsOneWidget);
+      expect(find.textContaining('ri•••@fluxe.com'), findsOneWidget);
+
+      await tocar(tester, find.byKey(const Key('btn-2fa-app')));
+      expect(corpoDe(log, 'POST', '/api/duas-etapas/iniciar'), {'metodo': 'app'});
+      expect(find.byKey(const Key('2fa-qr')), findsOneWidget);
+      final chave = fixtureJson('duas_etapas_iniciar')['chave'] as String;
+      expect(find.text(chave), findsOneWidget);
+
+      // Confere na tela antes de mandar: sem os 6 dígitos ou sem a senha, nada vai ao servidor
+      await digitar(tester, '2fa-codigo', '123');
+      await tocar(tester, find.byKey(const Key('2fa-ativar')));
+      expect(find.text('Digite o código de 6 dígitos.'), findsOneWidget);
+      await digitar(tester, '2fa-codigo', '654321');
+      await tocar(tester, find.byKey(const Key('2fa-ativar')));
+      expect(find.text('Confirme com a sua senha atual.'), findsOneWidget);
+      expect(pedidos(log, 'POST', '/api/duas-etapas/ativar'), 0);
+
+      await digitar(tester, '2fa-senha', 'senha1234');
+      await tocar(tester, find.byKey(const Key('2fa-ativar')));
+      expect(corpoDe(log, 'POST', '/api/duas-etapas/ativar'), {'metodo': 'app', 'codigo': '654321', 'senha_atual': 'senha1234'});
+      expect(find.text('Ativada'), findsOneWidget);
+      expect(find.text('Aplicativo autenticador'), findsOneWidget);
+      expect(find.text('10 restantes'), findsOneWidget);
+
+      // Os 10 códigos de recuperação aparecem uma vez, com Copiar e Salvar
+      final codigos = (fixtureJson('duas_etapas_ativar')['codigos'] as List).cast<String>();
+      await rolarAte(tester, find.byKey(const Key('2fa-codigos')));
+      for (final c in codigos) {
+        expect(find.textContaining(c), findsOneWidget);
+      }
+      await tocar(tester, find.byKey(const Key('2fa-salvar-codigos')));
+      expect(compartilhado, isNotNull);
+      final arquivo = compartilhado!.files!.single;
+      expect(compartilhado!.fileNameOverrides, ['sicapda-codigos-de-recuperacao.txt']);
+      expect(utf8.decode(await arquivo.readAsBytes()), contains(codigos.last));
+
+      await tocar(tester, find.byKey(const Key('2fa-guardei')));
+      expect(find.byKey(const Key('2fa-codigos')), findsNothing);
+    });
+
+    testWidgets('verificação em duas etapas ativada: novos códigos e desativar pedem a senha', (tester) async {
+      final log = <http.Request>[];
+      await abrirApp(tester, fakeApi(log: log, overrides: {
+        'GET /api/duas-etapas': (_) => jsonResposta({...fixtureJson('duas_etapas_ativar')['estado'] as Map<String, dynamic>, 'codigos_restantes': 2}),
+      }));
+      await abrirConfig(tester, 'seguranca');
+
+      await rolarAte(tester, find.byKey(const Key('2fa-restantes')));
+      expect(find.text('2 restantes'), findsOneWidget);
+      expect(find.textContaining('Restam poucos códigos'), findsOneWidget);
+
+      // Desistir na janela da senha não chama o servidor
+      await tocar(tester, find.byKey(const Key('2fa-novos-codigos')));
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      expect(pedidos(log, 'POST', '/api/duas-etapas/codigos'), 0);
+
+      await tocar(tester, find.byKey(const Key('2fa-novos-codigos')));
+      await tester.enterText(find.byKey(const Key('2fa-senha-dialogo')), 'senha1234');
+      await tester.tap(find.byKey(const Key('2fa-senha-confirmar')));
+      await tester.pumpAndSettle();
+      expect(corpoDe(log, 'POST', '/api/duas-etapas/codigos'), {'senha_atual': 'senha1234'});
+      await rolarAte(tester, find.byKey(const Key('2fa-codigos')));
+      expect(find.text('10 restantes'), findsOneWidget);
+
+      await tocar(tester, find.byKey(const Key('2fa-desativar')));
+      expect(find.text('Desativar a verificação?'), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('2fa-senha-dialogo')), 'senha1234');
+      await tester.tap(find.byKey(const Key('2fa-senha-confirmar')));
+      await tester.pumpAndSettle();
+      expect(corpoDe(log, 'POST', '/api/duas-etapas/desativar'), {'senha_atual': 'senha1234'});
+      expect(find.text('Desativada'), findsOneWidget);
+      expect(find.byKey(const Key('2fa-codigos')), findsNothing);
+      expect(find.byKey(const Key('btn-2fa-app')), findsOneWidget);
+    });
+
+    testWidgets('verificação em duas etapas: senha errada, código por e-mail e "Agora não"', (tester) async {
+      final log = <http.Request>[];
+      await abrirApp(tester, fakeApi(log: log, overrides: {
+        'POST /api/duas-etapas/ativar': (_) => jsonResposta({'sucesso': false, 'mensagem': 'Senha atual incorreta.'}, 403),
+      }));
+      await abrirConfig(tester, 'seguranca');
+
+      await tocar(tester, find.byKey(const Key('2fa-agora-nao')));
+      expect(pedidos(log, 'POST', '/api/duas-etapas/dispensar'), 1);
+      expect(find.byKey(const Key('2fa-convite')), findsNothing);
+
+      await tocar(tester, find.byKey(const Key('btn-2fa-email')));
+      expect(corpoDe(log, 'POST', '/api/duas-etapas/iniciar'), {'metodo': 'email'});
+      expect(find.byKey(const Key('2fa-enviado')), findsOneWidget);
+      await tocar(tester, find.byKey(const Key('2fa-reenviar')));
+      expect(pedidos(log, 'POST', '/api/duas-etapas/iniciar'), 2);
+      expect(find.text('Código novo enviado. O anterior não vale mais.'), findsOneWidget);
+
+      await digitar(tester, '2fa-codigo', '111222');
+      await digitar(tester, '2fa-senha', 'errada');
+      await tocar(tester, find.byKey(const Key('2fa-ativar')));
+      expect(corpoDe(log, 'POST', '/api/duas-etapas/ativar')['metodo'], 'email');
+      expect(find.text('Senha atual incorreta.'), findsOneWidget);
+      expect(find.text('Desativada'), findsOneWidget);
+    });
+
+    testWidgets('verificação em duas etapas com servidor antigo explica que é preciso atualizar', (tester) async {
+      await abrirApp(tester, fakeApi(overrides: {
+        'GET /api/duas-etapas': (_) => jsonResposta({'sucesso': false, 'mensagem': 'Rota não encontrada.'}, 404),
+      }));
+      await abrirConfig(tester, 'seguranca');
+      await rolarAte(tester, find.text(mensagemServidorDesatualizado));
+    });
+
+    testWidgets('verificação em duas etapas sem a migration no servidor avisa que não está disponível', (tester) async {
+      await abrirApp(tester, fakeApi(overrides: {
+        'GET /api/duas-etapas': (_) => jsonResposta({...fixtureJson('duas_etapas'), 'disponivel': false}),
+      }));
+      await abrirConfig(tester, 'seguranca');
+      await rolarAte(tester, find.text('A verificação em duas etapas ainda não está disponível neste servidor.'));
+    });
+
     testWidgets('a versão do app aparece na aba Aplicativo', (tester) async {
       await abrirApp(tester, fakeApi());
       await abrirConfig(tester, 'aplicativo');

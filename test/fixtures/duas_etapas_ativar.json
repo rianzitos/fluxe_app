@@ -1,0 +1,27 @@
+{
+  "sucesso": true,
+  "mensagem": "Verificação em duas etapas ativada! Guarde os códigos de recuperação.",
+  "codigos": [
+    "D66R2-YS63X",
+    "YQLSJ-5CH5M",
+    "62GH6-GEXQE",
+    "TK6VC-9RZ53",
+    "9PZBR-SBD73",
+    "XDWHR-5QEV7",
+    "68WEJ-5YUFG",
+    "FZ5YT-FJA2E",
+    "LUV3A-JWQ7G",
+    "WHGN7-3SUA2"
+  ],
+  "estado": {
+    "disponivel": true,
+    "ativa": true,
+    "metodo": "app",
+    "metodo_rotulo": "Aplicativo autenticador",
+    "ativada_em": "16/11/2026",
+    "codigos_restantes": 10,
+    "pendente": null,
+    "email": "ri•••@fluxe.com",
+    "email_disponivel": true
+  }
+}

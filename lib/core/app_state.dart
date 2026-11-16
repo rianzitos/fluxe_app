@@ -186,13 +186,36 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<void> login(String email, String senha, {String? serverUrl}) async {
+  /// Entra com e-mail e senha. Se a conta usa a verificação em duas etapas, a sessão ainda não abre: devolve o
+  /// [DesafioDuasEtapas] e a tela de login pede o código ([verificarCodigo]). Sem a verificação, entra e devolve null.
+  Future<DesafioDuasEtapas?> login(String email, String senha, {String? serverUrl}) async {
     if (serverUrl != null && serverUrl.trim().isNotEmpty) {
       await setBaseUrl(serverUrl);
     }
     final client = ApiClient(baseUrl: baseUrl, client: _httpClient);
-    final res = await client.post('/login', {'email': email.trim(), 'senha': senha});
+    // "duas_etapas": este app sabe pedir o código (um app antigo recebe do servidor a explicação para atualizar).
+    final res = await client.post('/login', {'email': email.trim(), 'senha': senha, 'duas_etapas': true});
+    if (res['duas_etapas'] == true) return DesafioDuasEtapas.fromJson(res);
+    await _entrar(res);
+    return null;
+  }
 
+  /// Segunda etapa: o código do aplicativo autenticador, do e-mail ou um código de recuperação.
+  /// Erro 410 = recomeçar pelo e-mail e senha (venceu ou errou demais); 422 = código errado, pode tentar de novo.
+  Future<void> verificarCodigo(DesafioDuasEtapas desafio, String codigo) async {
+    final client = ApiClient(baseUrl: baseUrl, client: _httpClient);
+    await _entrar(await client.post('/login/verificar', {'desafio': desafio.desafio, 'codigo': codigo.trim()}));
+  }
+
+  /// "Reenviar código" do método por e-mail. Devolve a mensagem do servidor.
+  Future<String> reenviarCodigo(DesafioDuasEtapas desafio) async {
+    final client = ApiClient(baseUrl: baseUrl, client: _httpClient);
+    final res = await client.post('/login/reenviar', {'desafio': desafio.desafio});
+    return (res['mensagem'] as String?) ?? 'Enviamos um código novo.';
+  }
+
+  /// Guarda o token e o perfil que o servidor devolveu no login (ou na segunda etapa) e abre o app.
+  Future<void> _entrar(Map<String, dynamic> res) async {
     _token = res['token'] as String;
     try {
       await _tokens.write(_token!);

@@ -866,3 +866,79 @@ class EstadoAoVivo {
         novosAcessos: _i(j['novosAcessos']),
       );
 }
+
+// ─── Verificação em duas etapas ────────────────────────────────────────────
+
+/// Estado da verificação em duas etapas da conta (GET /api/duas-etapas), o mesmo que a tela de Segurança do site mostra.
+class EstadoDuasEtapas {
+  /// false = o servidor ainda não tem a função (falta a migration 008 no banco).
+  final bool disponivel;
+  final bool ativa;
+  final String? metodo; // 'app' | 'email' (só quando ativa)
+  final String? metodoRotulo; // "Aplicativo autenticador"
+  final String? ativadaEm; // "16/11/2026"
+  final int codigosRestantes;
+
+  /// Escolhida no cadastro da empresa e ainda não configurada ('app' | 'email'): a tela convida a concluir.
+  final String? pendente;
+  final String email; // mascarado: "ri•••@fluxe.com"
+  final bool emailDisponivel; // o servidor consegue enviar e-mails
+
+  const EstadoDuasEtapas({
+    required this.disponivel,
+    required this.ativa,
+    this.metodo,
+    this.metodoRotulo,
+    this.ativadaEm,
+    this.codigosRestantes = 0,
+    this.pendente,
+    this.email = '',
+    this.emailDisponivel = false,
+  });
+
+  factory EstadoDuasEtapas.fromJson(Map<String, dynamic> j) => EstadoDuasEtapas(
+        disponivel: _b(j['disponivel']),
+        ativa: _b(j['ativa']),
+        metodo: j['metodo'] as String?,
+        metodoRotulo: j['metodo_rotulo'] as String?,
+        ativadaEm: j['ativada_em'] as String?,
+        codigosRestantes: _i(j['codigos_restantes']),
+        pendente: j['pendente'] as String?,
+        email: _s(j['email']),
+        emailDisponivel: _b(j['email_disponivel']),
+      );
+}
+
+/// Login que passou pela senha e espera o código (resposta do POST /api/login quando a conta usa a verificação).
+class DesafioDuasEtapas {
+  final String desafio; // identificador que volta no POST /api/login/verificar
+  final String metodo; // 'app' | 'email'
+  final String destino; // e-mail mascarado (método por e-mail)
+  final String mensagem;
+
+  const DesafioDuasEtapas({required this.desafio, required this.metodo, this.destino = '', this.mensagem = ''});
+
+  bool get porEmail => metodo == 'email';
+
+  factory DesafioDuasEtapas.fromJson(Map<String, dynamic> j) => DesafioDuasEtapas(
+        desafio: _s(j['desafio']),
+        metodo: _s(j['metodo'], 'app'),
+        destino: _s(j['destino']),
+        mensagem: _s(j['mensagem']),
+      );
+}
+
+/// Chave nova do aplicativo autenticador (POST /api/duas-etapas/iniciar {metodo: app}): ainda não vale para o login.
+class ChaveAutenticador {
+  final String chave; // "JBSW Y3DP ..." para digitar à mão
+  final String uri; // otpauth://totp/... (o que o QR Code contém)
+  final List<String> qr; // linhas do QR Code: "1" = quadradinho escuro
+
+  const ChaveAutenticador({required this.chave, required this.uri, required this.qr});
+
+  factory ChaveAutenticador.fromJson(Map<String, dynamic> j) => ChaveAutenticador(
+        chave: _s(j['chave']),
+        uri: _s(j['uri']),
+        qr: _strings(j['qr']),
+      );
+}

@@ -96,6 +96,41 @@ MockClient fakeApi({
           return jsonResposta({'sucesso': true, 'mensagem': 'Preferências salvas.'});
         case '/api/sessoes':
           return ok('sessoes');
+
+        // ─── Verificação em duas etapas (fluxe_app 1.3) ───
+        case '/api/login/verificar':
+          final codigo = corpo()['codigo'];
+          if (codigo == '123456' || codigo == 'ABCDE-FGHIJ') return ok('login');
+          return jsonResposta({'sucesso': false, 'mensagem': 'Código incorreto. Restam 4 tentativas.'}, 422);
+        case '/api/login/reenviar':
+          return jsonResposta({'sucesso': true, 'mensagem': 'Enviamos um código novo para ri•••@fluxe.com. O anterior não vale mais.'});
+        case '/api/duas-etapas':
+          return ok('duas_etapas');
+        case '/api/duas-etapas/iniciar':
+          if (corpo()['metodo'] == 'app') return ok('duas_etapas_iniciar');
+          return jsonResposta({
+            'sucesso': true,
+            'mensagem': 'Enviamos um código de 6 dígitos para ri•••@fluxe.com. Ele vale por 10 minutos.',
+            'destino': 'ri•••@fluxe.com',
+            'estado': fixtureJson('duas_etapas'),
+          });
+        case '/api/duas-etapas/ativar':
+          return ok('duas_etapas_ativar');
+        case '/api/duas-etapas/codigos':
+          final r = fixtureJson('duas_etapas_ativar');
+          return jsonResposta({...r, 'mensagem': 'Novos códigos gerados. Os anteriores não valem mais.'});
+        case '/api/duas-etapas/desativar':
+          return jsonResposta({
+            'sucesso': true,
+            'mensagem': 'Verificação em duas etapas desativada. O login volta a pedir só e-mail e senha.',
+            'estado': {...fixtureJson('duas_etapas'), 'pendente': null},
+          });
+        case '/api/duas-etapas/dispensar':
+          return jsonResposta({
+            'sucesso': true,
+            'mensagem': 'Tudo bem. Você pode ativar quando quiser em Configurações → Segurança.',
+            'estado': {...fixtureJson('duas_etapas'), 'pendente': null},
+          });
         case '/api/sessoes/encerrar':
           return jsonResposta({'sucesso': true, 'mensagem': corpo()['todas'] == true ? '2 sessões encerradas.' : 'Sessão encerrada.'});
         case '/api/notificacoes':

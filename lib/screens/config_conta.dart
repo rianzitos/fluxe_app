@@ -8,6 +8,7 @@ import '../models/models.dart';
 import '../widgets/common.dart';
 import '../widgets/formularios.dart';
 import 'app_shell.dart' show UserAvatar;
+import 'config_duas_etapas.dart';
 
 /// Abas Perfil e Segurança de Configurações: as mesmas regras e mensagens do site (o servidor usa o mesmo código).
 
@@ -292,7 +293,7 @@ class _Linha extends StatelessWidget {
 
 // ─── Segurança ─────────────────────────────────────────────────────────────
 
-/// Alterar senha, autenticação em duas etapas ("Em breve", como no site) e as sessões abertas no site.
+/// Alterar senha, verificação em duas etapas ([DuasEtapasCard], como no site) e as sessões abertas no site.
 class SegurancaTab extends StatefulWidget {
   const SegurancaTab({super.key});
 
@@ -453,31 +454,7 @@ class _SegurancaTabState extends State<SegurancaTab> {
             ],
           ),
         ),
-        AppCard(
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text('Autenticação em duas etapas', style: AppText.strong(context, size: 14.5)),
-                        const EtiquetaEmBreve(),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text('Vai exigir um código adicional ao entrar na conta. Ainda não está ativa: por enquanto o login pede só e-mail e senha.',
-                        style: AppText.muted(context, size: 12.5)),
-                  ],
-                ),
-              ),
-              const Switch(value: false, onChanged: null),
-            ],
-          ),
-        ),
+        const DuasEtapasCard(),
         AppCard(
           child: FutureBuilder<List<SessaoWeb>?>(
             future: _sessoes,
