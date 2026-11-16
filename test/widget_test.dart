@@ -187,6 +187,34 @@ void main() {
     expect(find.textContaining('Muitos pedidos seguidos'), findsOneWidget);
   });
 
+  testWidgets('a tela de login mantém as distâncias que o teste do emulador usa (tool/ci/android_smoke.sh)', (tester) async {
+    // O teste no emulador Android toca pela posição: acha o botão Entrar e toca a distâncias fixas (em dp) dele.
+    // Se o layout do login mudar, este teste aponta o que ajustar no script (como quando "Esqueci minha senha"
+    // empurrou os campos para cima e o login do emulador passou a tocar fora deles).
+    tester.view.physicalSize = const Size(1080, 2400); // o emulador do CI: 1080x2400, 420 dpi
+    tester.view.devicePixelRatio = 420 / 160;
+    addTearDown(tester.view.reset);
+    final c = await newController();
+    await tester.pumpWidget(SicapdaApp(controller: c));
+    await tester.pumpAndSettle();
+
+    Offset entrar() => tester.getCenter(find.widgetWithText(ElevatedButton, 'Entrar'));
+    void tocaDentro(Finder alvo, double dy, String nome) {
+      final ponto = Offset(entrar().dx, entrar().dy + dy);
+      expect(tester.getRect(alvo).contains(ponto), isTrue,
+          reason: '$nome: o toque em Entrar${dy >= 0 ? '+' : ''}${dy.toInt()} dp não cai em ${tester.getRect(alvo)}');
+    }
+
+    tocaDentro(find.byType(TextFormField).at(0), -212, 'campo e-mail');
+    tocaDentro(find.byType(TextFormField).at(1), -112, 'campo senha');
+    tocaDentro(find.widgetWithText(TextButton, 'Servidor'), 65, 'botão Servidor');
+    await tester.tap(find.text('Servidor'));
+    await tester.pumpAndSettle();
+    tocaDentro(find.byType(TextFormField).at(2), 140, 'campo do servidor');
+    tocaDentro(find.byType(TextFormField).at(0), -212, 'campo e-mail (com o servidor aberto)');
+    tocaDentro(find.byType(TextFormField).at(1), -112, 'campo senha (com o servidor aberto)');
+  });
+
   testWidgets('campos vazios são validados antes de chamar a API', (tester) async {
     final c = await newController();
     await pumpApp(tester, c);
