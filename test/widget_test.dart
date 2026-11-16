@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fluxe_app/core/app_state.dart';
 import 'package:fluxe_app/main.dart';
 import 'package:fluxe_app/widgets/sicapda_logo.dart';
@@ -185,6 +187,34 @@ void main() {
     expect(find.textContaining('Muitos pedidos seguidos'), findsOneWidget);
   });
 
+  testWidgets('a tela de login mantém as distâncias que o teste do emulador usa (tool/ci/android_smoke.sh)', (tester) async {
+    // O teste no emulador Android toca pela posição: acha o botão Entrar e toca a distâncias fixas (em dp) dele.
+    // Se o layout do login mudar, este teste aponta o que ajustar no script (como quando "Esqueci minha senha"
+    // empurrou os campos para cima e o login do emulador passou a tocar fora deles).
+    tester.view.physicalSize = const Size(1080, 2400); // o emulador do CI: 1080x2400, 420 dpi
+    tester.view.devicePixelRatio = 420 / 160;
+    addTearDown(tester.view.reset);
+    final c = await newController();
+    await tester.pumpWidget(SicapdaApp(controller: c));
+    await tester.pumpAndSettle();
+
+    Offset entrar() => tester.getCenter(find.widgetWithText(ElevatedButton, 'Entrar'));
+    void tocaDentro(Finder alvo, double dy, String nome) {
+      final ponto = Offset(entrar().dx, entrar().dy + dy);
+      expect(tester.getRect(alvo).contains(ponto), isTrue,
+          reason: '$nome: o toque em Entrar${dy >= 0 ? '+' : ''}${dy.toInt()} dp não cai em ${tester.getRect(alvo)}');
+    }
+
+    tocaDentro(find.byType(TextFormField).at(0), -212, 'campo e-mail');
+    tocaDentro(find.byType(TextFormField).at(1), -112, 'campo senha');
+    tocaDentro(find.widgetWithText(TextButton, 'Servidor'), 65, 'botão Servidor');
+    await tester.tap(find.text('Servidor'));
+    await tester.pumpAndSettle();
+    tocaDentro(find.byType(TextFormField).at(2), 140, 'campo do servidor');
+    tocaDentro(find.byType(TextFormField).at(0), -212, 'campo e-mail (com o servidor aberto)');
+    tocaDentro(find.byType(TextFormField).at(1), -112, 'campo senha (com o servidor aberto)');
+  });
+
   testWidgets('campos vazios são validados antes de chamar a API', (tester) async {
     final c = await newController();
     await pumpApp(tester, c);
@@ -261,5 +291,117 @@ void main() {
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
     expect(app.themeMode, ThemeMode.dark);
     expect(find.text('Painel Geral'), findsOneWidget);
+  });
+
+  group('verificação em duas etapas no login', () {
+    /// Login com a senha certa numa conta com a verificação ativa: o servidor devolve o desafio, não o token.
+    Future<(AppController, List<http.Request>)> entrarComSenha(WidgetTester tester, {String metodo = 'app'}) async {
+      final log = <http.Request>[];
+      final c = await newController(client: fakeApi(log: log, overrides: {
+        'POST /api/login': (req) => jsonResposta({
+              ...fixtureJson('login_duas_etapas'),
+              'metodo': metodo,
+              if (metodo == 'email') 'mensagem': 'Enviamos um código de 6 dígitos para ri•••@fluxe.com.',
+            }),
+      }));
+      await pumpApp(tester, c);
+      await tester.enterText(find.byType(TextFormField).at(0), 'rian@fluxe.com');
+      await tester.enterText(find.byType(TextFormField).at(1), 'senha1234');
+      await tester.tap(find.text('Entrar'));
+      await tester.pumpAndSettle();
+      return (c, log);
+    }
+
+    Map<String, dynamic> corpo(List<http.Request> log, String caminho) =>
+        jsonDecode(log.lastWhere((r) => r.url.path == caminho).body) as Map<String, dynamic>;
+
+    testWidgets('senha certa pede o código do aplicativo; com os 6 dígitos entra sozinho', (tester) async {
+      final (c, log) = await entrarComSenha(tester);
+
+      // O app avisa ao servidor que sabe pedir o código (um app antigo recebe a explicação para atualizar)
+      expect(corpo(log, '/api/login'), {'email': 'rian@fluxe.com', 'senha': 'senha1234', 'duas_etapas': true});
+      expect(c.isLoggedIn, isFalse);
+      expect(find.byKey(const Key('titulo-2fa')), findsOneWidget);
+      expect(find.textContaining('aplicativo autenticador'), findsOneWidget);
+      expect(find.byKey(const Key('btn-reenviar')), findsNothing); // no aplicativo não há o que reenviar
+
+      await tester.enterText(find.byKey(const Key('codigo-2fa')), '12345a6'); // só dígitos entram
+      await tester.pumpAndSettle();
+      final pedido = corpo(log, '/api/login/verificar');
+      expect(pedido['codigo'], '123456');
+      expect(pedido['desafio'], fixtureJson('login_duas_etapas')['desafio']);
+      expect(log.lastWhere((r) => r.url.path == '/api/login/verificar').headers['Authorization'], isNull);
+      expect(c.isLoggedIn, isTrue);
+      expect(find.text('Painel Geral'), findsOneWidget);
+    });
+
+    testWidgets('código errado mostra o erro e deixa tentar de novo', (tester) async {
+      final (c, _) = await entrarComSenha(tester);
+
+      await tester.enterText(find.byKey(const Key('codigo-2fa')), '000000');
+      await tester.pumpAndSettle();
+      expect(find.text('Código incorreto. Restam 4 tentativas.'), findsOneWidget);
+      expect(find.byKey(const Key('titulo-2fa')), findsOneWidget);
+      expect(c.isLoggedIn, isFalse);
+
+      // Validação local: menos de 6 dígitos não chama o servidor
+      await tester.enterText(find.byKey(const Key('codigo-2fa')), '12');
+      await tester.tap(find.byKey(const Key('btn-verificar')));
+      await tester.pumpAndSettle();
+      expect(find.text('Digite o código de 6 dígitos'), findsOneWidget);
+    });
+
+    testWidgets('410 (errou 5 vezes ou venceu) volta ao formulário de login com a explicação', (tester) async {
+      final log = <http.Request>[];
+      final c = await newController(client: fakeApi(log: log, overrides: {
+        'POST /api/login': (_) => jsonResposta(fixtureJson('login_duas_etapas')),
+        'POST /api/login/verificar': (_) => jsonResposta(
+            {'sucesso': false, 'mensagem': 'Você errou o código 5 vezes. Por segurança, entre de novo com e-mail e senha.'}, 410),
+      }));
+      await pumpApp(tester, c);
+      await tester.enterText(find.byType(TextFormField).at(0), 'rian@fluxe.com');
+      await tester.enterText(find.byType(TextFormField).at(1), 'senha1234');
+      await tester.tap(find.text('Entrar'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('codigo-2fa')), '999999');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('titulo-2fa')), findsNothing);
+      expect(find.text('Bem-vindo de volta!'), findsOneWidget);
+      expect(find.textContaining('errou o código 5 vezes'), findsOneWidget);
+      // O e-mail continua preenchido; a senha precisa ser digitada de novo
+      expect(tester.widget<TextFormField>(find.byType(TextFormField).at(0)).controller!.text, 'rian@fluxe.com');
+      expect(tester.widget<TextFormField>(find.byType(TextFormField).at(1)).controller!.text, isEmpty);
+      expect(c.isLoggedIn, isFalse);
+    });
+
+    testWidgets('código por e-mail: reenviar e entrar com um código de recuperação', (tester) async {
+      final (c, log) = await entrarComSenha(tester, metodo: 'email');
+      expect(find.textContaining('ri•••@fluxe.com'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('btn-reenviar')));
+      await tester.pumpAndSettle();
+      expect(corpo(log, '/api/login/reenviar'), {'desafio': fixtureJson('login_duas_etapas')['desafio']});
+      expect(find.byKey(const Key('aviso-2fa')), findsOneWidget);
+      expect(find.textContaining('O anterior não vale mais'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('btn-recuperacao')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('10 códigos de recuperação'), findsOneWidget);
+      expect(find.byKey(const Key('btn-reenviar')), findsNothing);
+      await tester.enterText(find.byKey(const Key('codigo-2fa')), 'ABCDE-FGHIJ');
+      await tester.tap(find.byKey(const Key('btn-verificar')));
+      await tester.pumpAndSettle();
+      expect(corpo(log, '/api/login/verificar')['codigo'], 'ABCDE-FGHIJ');
+      expect(c.isLoggedIn, isTrue);
+    });
+
+    testWidgets('"Voltar ao login" desiste da segunda etapa', (tester) async {
+      final (c, _) = await entrarComSenha(tester);
+      await tester.tap(find.byKey(const Key('btn-voltar-login')));
+      await tester.pumpAndSettle();
+      expect(find.text('Bem-vindo de volta!'), findsOneWidget);
+      expect(c.isLoggedIn, isFalse);
+    });
   });
 }

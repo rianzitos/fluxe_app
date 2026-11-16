@@ -138,6 +138,8 @@ fi
 # ── 3) entrar pelo app ──────────────────────────────────────────────────────────
 # O botão "Entrar" é o ponto de referência: o resto da tela fica a distâncias fixas (em dp) dele. Como o teclado
 # do Android sobe e reorganiza a tela a cada campo tocado, a posição do botão é medida de novo antes de cada toque.
+# As distâncias (+65 Servidor, +140 endereço, -212 e-mail, -112 senha) são conferidas pelo teste "a tela de login
+# mantém as distâncias que o teste do emulador usa" (test/widget_test.dart): mudou o layout do login, ajuste aqui e lá.
 X=0; Y=0
 ATUAL=$(mktemp --suffix=.png)                                      # captura de trabalho: não entra na pasta de saída
 achar_entrar() {
@@ -173,11 +175,11 @@ foto 03-servidor-digitado
 adb shell dumpsys input_method 2>/dev/null | grep -E "mInputShown|mImeWindowVis" | head -2 | tee "$OUT/teclado.txt"
 
 achar_entrar || { erro "o botão Entrar sumiu depois de digitar o servidor"; fim; }
-toque "$X" $((Y - $(dp 180))); sleep 2                             # campo e-mail
+toque "$X" $((Y - $(dp 212))); sleep 2                             # campo e-mail (centro, 212 dp acima do Entrar)
 adb shell input text 'teste@fluxe.com'
 sleep 1
 achar_entrar || { erro "o botão Entrar sumiu depois de digitar o e-mail"; fim; }
-toque "$X" $((Y - $(dp 80)));  sleep 2                             # campo senha
+toque "$X" $((Y - $(dp 112))); sleep 2                             # campo senha (centro, 112 dp acima do Entrar)
 adb shell input text 'senha1234'
 sleep 1.5
 foto 04-formulario

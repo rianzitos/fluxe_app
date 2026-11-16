@@ -73,10 +73,20 @@ Outros detalhes: menu lateral escuro igual ao da web (no computador ele fica sem
 | **Notificações** | Liga/desliga os alertas do sino e do Painel (previsão de demanda, acessos negados nas catracas e dispositivo IoT sem sinal) e os **e-mails automáticos** que o servidor envia: *Desperdício alto por e-mail* e *Resumo diário por e-mail* (às 8h). É a mesma escolha do site (fica na conta); o catálogo vem do servidor |
 | **Sistema** | Período padrão e itens por página dos Relatórios (da conta: valem no app e no site), o fuso (fixo, Brasília) e o **tempo real** deste aparelho |
 | **Integrações** | **Dispositivos IoT** da empresa (catracas, leitores RFID/biometria e balanças de desperdício) com **Online/Offline** e último sinal, o token sempre mascarado e o **desperdício de hoje** por refeição. O administrador **cadastra dispositivos** (o token inteiro aparece **uma única vez**, com botão de copiar), **gera outro token**, **simula a leitura** de um cartão numa catraca (registra um acesso de verdade) e **testa uma pesagem** |
-| **Segurança** | **Alterar senha**, autenticação em duas etapas (*Em breve*, igual ao site) e as **sessões abertas no site** (navegador, IP, último acesso), com "Encerrar" uma ou todas. O próprio app entra com token e não aparece nessa lista |
+| **Segurança** | **Alterar senha**, **verificação em duas etapas** (abaixo) e as **sessões abertas no site** (navegador, IP, último acesso), com "Encerrar" uma ou todas. O próprio app entra com token e não aparece nessa lista |
 | **Aplicativo** | Endereço do servidor, versão do app e sair da conta |
 
 O atalho **IoT** do cabeçalho (ícone de sinal, ao lado do sino) abre direto em Integrações, como os botões "Integrações" e "IoT" do topo do site.
+
+### Verificação em duas etapas (1.3)
+
+Igual ao site (o servidor usa o mesmo código, `DoisFatores`): além da senha, o login pede um código de 6 dígitos.
+
+- **No login** — com a senha certa, a tela pede o código: do **aplicativo autenticador** (Google Authenticator, Microsoft Authenticator...) ou o que chegou **por e-mail** (com "Reenviar código"). Com os 6 dígitos ele confere sozinho. "Usar um código de recuperação" aceita um dos 10 códigos guardados. Errou 5 vezes ou o código venceu: volta ao login com a explicação.
+- **Em Configurações → Segurança** — ativar escolhendo o método: o app mostra o **QR Code** (desenhado a partir das linhas que o servidor manda, sem pacote extra) para escanear com o celular e a **chave** com "Copiar" (no próprio celular, cole no aplicativo autenticador em "Inserir uma chave de configuração"); depois o código e a senha atual. Os **10 códigos de recuperação** aparecem uma vez, com Copiar e Salvar (`.txt`). Ativada, mostra o método, a data e quantos códigos restam, com **Gerar novos códigos** e **Desativar** (pedem a senha). Se a verificação foi escolhida no cadastro da empresa, aparece o convite "Falta só um passo" (com "Agora não").
+- **Compatibilidade** — o app manda `duas_etapas: true` no login; um app antigo (até a 1.2) numa conta com a verificação ativa recebe do servidor "Atualize o aplicativo". Num SystemFluxe sem a função, a aba avisa que é preciso atualizar o servidor.
+
+Rotas: `POST /api/login` (`duas_etapas: true`), `POST /api/login/verificar {desafio, codigo}`, `POST /api/login/reenviar {desafio}`, `GET /api/duas-etapas` e `POST /api/duas-etapas/iniciar|ativar|desativar|codigos|dispensar`.
 
 ### Sino e tempo real
 

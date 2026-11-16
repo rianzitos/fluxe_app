@@ -64,6 +64,47 @@ class ConfigService {
 
   Future<String> encerrarTodasAsSessoes() async => _mensagem(await api.post('/sessoes/encerrar', {'todas': true}));
 
+  // ─── Verificação em duas etapas ─────────────────────────────────────────
+
+  Future<EstadoDuasEtapas> duasEtapas() async => EstadoDuasEtapas.fromJson(await api.get('/duas-etapas'));
+
+  /// Aplicativo autenticador, passo 1: chave nova e o QR Code (ainda não vale para o login).
+  Future<ChaveAutenticador> iniciarAutenticador() async =>
+      ChaveAutenticador.fromJson(await api.post('/duas-etapas/iniciar', {'metodo': 'app'}));
+
+  /// Código por e-mail, passo 1: o servidor manda um código para confirmar o e-mail. Devolve a mensagem.
+  Future<String> iniciarEmail() async => _mensagem(await api.post('/duas-etapas/iniciar', {'metodo': 'email'}));
+
+  /// Passo 2 (exige a senha atual): liga a verificação e devolve os 10 códigos de recuperação, que o servidor não
+  /// mostra de novo.
+  Future<({String mensagem, List<String> codigos, EstadoDuasEtapas estado})> ativarDuasEtapas({
+    required String metodo,
+    required String codigo,
+    required String senhaAtual,
+  }) async =>
+      _comCodigos(await api.post('/duas-etapas/ativar', {'metodo': metodo, 'codigo': codigo, 'senha_atual': senhaAtual}));
+
+  /// Gera 10 códigos de recuperação novos (os anteriores deixam de valer). Exige a senha atual.
+  Future<({String mensagem, List<String> codigos, EstadoDuasEtapas estado})> novosCodigos(String senhaAtual) async =>
+      _comCodigos(await api.post('/duas-etapas/codigos', {'senha_atual': senhaAtual}));
+
+  Future<({String mensagem, EstadoDuasEtapas estado})> desativarDuasEtapas(String senhaAtual) async {
+    final res = await api.post('/duas-etapas/desativar', {'senha_atual': senhaAtual});
+    return (mensagem: _mensagem(res), estado: _estado(res));
+  }
+
+  /// "Agora não" do convite (a verificação escolhida no cadastro da empresa e ainda não configurada).
+  Future<EstadoDuasEtapas> dispensarConvite() async => _estado(await api.post('/duas-etapas/dispensar', const {}));
+
+  static EstadoDuasEtapas _estado(Map<String, dynamic> res) =>
+      EstadoDuasEtapas.fromJson((res['estado'] as Map<String, dynamic>?) ?? const {'disponivel': true});
+
+  static ({String mensagem, List<String> codigos, EstadoDuasEtapas estado}) _comCodigos(Map<String, dynamic> res) => (
+        mensagem: _mensagem(res),
+        codigos: (res['codigos'] as List? ?? const []).map((c) => c.toString()).toList(),
+        estado: _estado(res),
+      );
+
   // ─── Sino ───────────────────────────────────────────────────────────────
 
   /// Os mesmos alertas do sino do site (previsão + catracas, conforme as preferências), com o destino de cada um.
