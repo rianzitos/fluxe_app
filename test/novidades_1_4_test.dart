@@ -121,6 +121,11 @@ void main() {
       expect(find.byType(SicapdaLogo), findsNothing); // como no site: só a faixa com os ícones
       expect(find.text('Pessoas'), findsNothing);
       expect(find.byTooltip('Pessoas'), findsOneWidget); // o nome aparece ao passar o mouse
+      // e o leitor de tela continua lendo cada ícone como um botão com o nome da tela
+      final semantica = tester.ensureSemantics();
+      expect(tester.getSemantics(find.bySemanticsLabel('Pessoas')),
+          matchesSemantics(label: 'Pessoas', isButton: true, hasTapAction: true, hasSelectedState: true));
+      semantica.dispose();
       expect((await SharedPreferences.getInstance()).getBool('menu_recolhido'), isTrue);
       expect(tester.takeException(), isNull);
 

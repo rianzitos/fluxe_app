@@ -460,7 +460,21 @@ class _SideMenu extends StatelessWidget {
           child: compacto
               ? Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: [Tooltip(message: user?.nome ?? 'Meu perfil', child: perfil), const SizedBox(height: 6), sair],
+                  children: [
+                    Tooltip(
+                      message: user?.nome ?? 'Meu perfil',
+                      excludeFromSemantics: true,
+                      child: Semantics(
+                        button: true,
+                        label: 'Meu perfil${user == null ? '' : ' (${user.nome})'}',
+                        onTap: onConfig,
+                        excludeSemantics: true,
+                        child: perfil,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    sair,
+                  ],
                 )
               : Row(children: [Expanded(child: perfil), sair]),
         ),
@@ -499,7 +513,7 @@ class _MenuItem extends StatelessWidget {
               ? const EdgeInsets.symmetric(vertical: 14)
               : const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           child: compacto
-              ? Center(child: Icon(icon, size: 22, color: cor, semanticLabel: label))
+              ? Center(child: Icon(icon, size: 22, color: cor))
               : Row(
                   children: [
                     Icon(icon, size: 21, color: cor),
@@ -522,8 +536,22 @@ class _MenuItem extends StatelessWidget {
     );
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
+      // Recolhido só aparece o ícone: o nome vai na dica (mouse) e para o leitor de tela, como um botão.
       child: compacto
-          ? Tooltip(message: label, preferBelow: false, waitDuration: const Duration(milliseconds: 250), child: botao)
+          ? Tooltip(
+              message: label,
+              preferBelow: false,
+              waitDuration: const Duration(milliseconds: 250),
+              excludeFromSemantics: true,
+              child: Semantics(
+                button: true,
+                selected: active,
+                label: label,
+                onTap: onTap,
+                excludeSemantics: true,
+                child: botao,
+              ),
+            )
           : botao,
     );
   }
