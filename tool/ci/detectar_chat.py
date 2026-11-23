@@ -20,11 +20,29 @@ def linhas_amarelas(img, x0, x1, y0, y1, minimo):
     return [y for y in range(y0, y1) if sum(1 for x in range(x0, x1, 2) if amarelo(*px[x, y])) * 2 >= minimo]
 
 
+def ultimo_bloco(ys):
+    """O último bloco contínuo de linhas (de baixo para cima, até um buraco de mais de 3 px)."""
+    fim = ys[-1]
+    inicio = fim
+    for y in reversed(ys):
+        if inicio - y > 3:
+            break
+        inicio = y
+    return inicio, fim
+
+
 def aba_selecionada(img):
-    """A pílula amarela da aba selecionada (Painel, logo depois do login) fica no quinto da esquerda, embaixo."""
+    """A pílula amarela da aba selecionada (Painel, logo depois do login) fica no quinto da esquerda, embaixo.
+
+    Só o último bloco amarelo conta: acima da barra de abas pode aparecer o amarelo do gráfico do Painel (a linha
+    "Previsto"), e a média dos dois mandava o toque para o meio do gráfico em vez da aba.
+    """
     w, h = img.size
     ys = linhas_amarelas(img, 0, w // 5, int(h * 0.75), h, max(8, w // 40))
-    return None if not ys else (ys[0] + ys[-1]) // 2
+    if not ys:
+        return None
+    inicio, fim = ultimo_bloco(ys)
+    return (inicio + fim) // 2
 
 
 def botao_enviar(img):
@@ -34,13 +52,7 @@ def botao_enviar(img):
     if not ys:
         return None
     # pega o último bloco contínuo (o botão), ignorando um eventual pedaço amarelo mais acima
-    fim = ys[-1]
-    inicio = fim
-    for y in reversed(ys):
-        if inicio - y > 3:
-            break
-        inicio = y
-    return inicio, fim
+    return ultimo_bloco(ys)
 
 
 if __name__ == '__main__':
