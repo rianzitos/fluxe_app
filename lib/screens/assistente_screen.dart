@@ -7,6 +7,7 @@ import '../core/theme.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
 import '../widgets/page_header.dart';
+import 'diagnostico_ia_screen.dart';
 
 class _Msg {
   final String texto;
@@ -21,7 +22,8 @@ String _agora() {
   return '${two(n.hour)}:${two(n.minute)}';
 }
 
-/// Assistente IA: chat com previsões calculadas pelo servidor.
+/// Assistente IA: chat com o assistente do servidor (IA restrita ao SICAPDA, ou o motor local de previsões).
+/// Cada pergunta leva as trocas anteriores ("historico") para a IA entender perguntas como "e para sexta?".
 class AssistenteScreen extends StatefulWidget {
   final VoidCallback onMenu;
   const AssistenteScreen({super.key, required this.onMenu});
@@ -66,9 +68,24 @@ class _AssistenteScreenState extends State<AssistenteScreen> {
     }
   }
 
+  /// Conversa até aqui, no formato da API: só perguntas que tiveram resposta (sem os avisos de erro e
+  /// sem a pergunta que os causou). O servidor usa as últimas 12 mensagens.
+  List<Map<String, String>> _historico() {
+    final h = <Map<String, String>>[];
+    for (final m in _msgs) {
+      if (m.erro) {
+        if (h.isNotEmpty && h.last['autor'] == 'usuario') h.removeLast();
+        continue;
+      }
+      h.add({'autor': m.doUsuario ? 'usuario' : 'bot', 'texto': m.texto});
+    }
+    return h.length > 12 ? h.sublist(h.length - 12) : h;
+  }
+
   Future<void> _send(String texto) async {
     final t = texto.trim();
     if (t.isEmpty || _sending) return;
+    final historico = _historico();
     _input.clear();
     setState(() {
       _msgs.add(_Msg(t, doUsuario: true, hora: _agora()));
@@ -77,7 +94,9 @@ class _AssistenteScreenState extends State<AssistenteScreen> {
     _toBottom();
 
     try {
-      final res = await AppScope.read(context).api.post('/assistente', {'mensagem': t});
+      final res = await AppScope.read(context)
+          .api
+          .post('/assistente', {'mensagem': t, 'historico': historico}, timeout: ApiClient.timeoutAssistente);
       if (!mounted) return;
       setState(() => _msgs.add(_Msg(res['resposta'] as String? ?? '', doUsuario: false, hora: res['hora'] as String? ?? _agora())));
     } on ApiException catch (e) {
@@ -104,8 +123,19 @@ class _AssistenteScreenState extends State<AssistenteScreen> {
       children: [
         PageHeader(
           title: 'Assistente IA',
-          subtitle: 'Previsões de pessoas e alimentos',
+          subtitle: info?.ia == true ? 'Com IA · seus dados e o uso do SICAPDA' : 'Previsões de pessoas e alimentos',
           onMenu: widget.onMenu,
+          actions: [
+            // Só o administrador: o mesmo teste de /assistente/diagnostico do site, para saber por que a IA não responde.
+            if (AppScope.of(context).user?.perfil == 'admin')
+              IconButton(
+                key: const Key('diagnostico-ia'),
+                tooltip: 'Diagnóstico da IA',
+                onPressed: () => Navigator.of(context)
+                    .push(MaterialPageRoute<void>(builder: (_) => const DiagnosticoIAScreen())),
+                icon: Icon(Icons.troubleshoot_rounded, color: context.pal.text),
+              ),
+          ],
         ),
         if (_infoError != null && info == null)
           Expanded(child: ErrorState(error: _infoError!, onRetry: _loadInfo))
@@ -121,7 +151,13 @@ class _AssistenteScreenState extends State<AssistenteScreen> {
               itemBuilder: (context, i) => i == _msgs.length ? const _Typing() : _Bubble(_msgs[i]),
             ),
           ),
-          _InputBar(controller: _input, sending: _sending, onSend: () => _send(_input.text)),
+          _InputBar(
+            controller: _input,
+            sending: _sending,
+            // Com a IA, como no site: também tira dúvidas de uso do sistema.
+            dica: info.ia ? 'Pergunte sobre os dados ou como usar o sistema...' : 'Digite sua pergunta...',
+            onSend: () => _send(_input.text),
+          ),
         ],
       ],
     );
@@ -273,7 +309,8 @@ class _InputBar extends StatelessWidget {
   final TextEditingController controller;
   final bool sending;
   final VoidCallback onSend;
-  const _InputBar({required this.controller, required this.sending, required this.onSend});
+  final String dica;
+  const _InputBar({required this.controller, required this.sending, required this.onSend, required this.dica});
 
   @override
   Widget build(BuildContext context) {
@@ -299,7 +336,7 @@ class _InputBar extends StatelessWidget {
                   style: TextStyle(color: pal.text, fontSize: 14.5),
                   decoration: InputDecoration(
                     counterText: '',
-                    hintText: 'Digite sua pergunta...',
+                    hintText: dica,
                     hintStyle: TextStyle(color: pal.textMuted),
                     filled: true,
                     fillColor: pal.card,

@@ -24,14 +24,14 @@ Ele foi pensado para quem não está o tempo todo na frente de um computador, co
 - **Quantas refeições e quantos quilos produzir amanhã?** A previsão é calculada com o histórico de acessos e produção, considerando feriados e dias da semana.
 - **Estamos desperdiçando comida?** Acompanhamento diário e mensal de produção e desperdício, com alertas quando passa da meta.
 - **O que aconteceu nos acessos?** Consulta e exportação dos registros de entrada e saída, com filtros.
-- **Dúvidas rápidas.** O assistente responde perguntas como "previsão para sexta" ou "como está o desperdício?" em linguagem natural.
+- **Dúvidas rápidas.** O assistente responde perguntas como "previsão para sexta", "como está o desperdício?" ou "como vincular um cartão?" em linguagem natural. Com a IA ligada no servidor (`IA_API_KEY` no SystemFluxe, por padrão o Gemini gratuito do Google), ele entende a conversa ("e para segunda?"), consulta os dados da empresa e tira dúvidas de uso do sistema, mas responde **só sobre o SICAPDA**; sem ela, responde o motor de previsões de sempre.
 - **Quem está cadastrado e com qual cartão?** O administrador cadastra uma pessoa (ou importa uma planilha), vincula o cartão RFID (basta passá-lo numa catraca e escolher na lista) e ativa ou desativa acessos, tudo pelo celular.
 - **As catracas e balanças estão funcionando?** Os dispositivos IoT aparecem como Online/Offline; o administrador cadastra um dispositivo novo, gera o token, simula a leitura de um cartão e testa uma pesagem pelo app.
 - **O que está acontecendo agora?** A tela aberta se atualiza sozinha (tempo real) e cada entrada ou saída nas catracas aparece num aviso rápido; o sino mostra os mesmos alertas do site.
 
 Na prática, o app ajuda a **planejar a produção com mais precisão, reduzir o desperdício de alimentos, ter mais segurança e visibilidade sobre quem circula na instituição** e tomar decisões com dados em tempo real, de qualquer lugar.
 
-> Desde a versão **1.2** o app tem **as mesmas funções do site**: além de consultar, a pessoa edita o próprio perfil (nome, e-mail, cargo, foto e senha), escolhe as notificações e as preferências dos relatórios, vê e encerra as sessões abertas no site, e o **administrador da empresa** cadastra pessoas e cartões (inclusive por planilha) e gerencia os **dispositivos IoT** (catracas, leitores e balanças). As regras são as mesmas do site porque o servidor usa o mesmo código para os dois. A leitura das catracas e das balanças continua sendo feita pelos próprios dispositivos.
+> Desde a versão **1.2** o app tem **as mesmas funções do site** (e a **1.4** trouxe o que o site ganhou depois: a tela **Produção**, o **Assistente com IA**, o menu lateral recolhível no PC e a exportação em Excel ou CSV): além de consultar, a pessoa edita o próprio perfil (nome, e-mail, cargo, foto e senha), escolhe as notificações e as preferências dos relatórios, vê e encerra as sessões abertas no site, e o **administrador da empresa** cadastra pessoas e cartões (inclusive por planilha) e gerencia os **dispositivos IoT** (catracas, leitores e balanças). As regras são as mesmas do site porque o servidor usa o mesmo código para os dois. A leitura das catracas e das balanças continua sendo feita pelos próprios dispositivos.
 
 ---
 
@@ -57,12 +57,13 @@ O login usa os **mesmos usuários e senhas da web**.
 | **Login** | `/login` | E-mail e senha; **Esqueci minha senha** (o servidor envia por e-mail o link para criar uma senha nova, o mesmo do site); campo opcional para trocar o endereço do servidor |
 | **Painel** | `/painel` | Usuários ativos, acessos, refeições previstas, acurácia, gráfico de previsão de demanda, distribuição de refeições, previsão das próximas horas, alertas e recomendações |
 | **Análise mensal** | `/acessos` | Total produzido/desperdiçado, média de pessoas, gráficos diários e insights do mês, com seletor de mês |
+| **Produção** | `/producao` | Item do menu lateral (entre Análise mensal e Pessoas, como no site) e atalhos "Registrar produção" no gráfico Previsão de Demanda do Painel e na Análise mensal: quilos produzidos e desperdiçados por refeição em cada dia, com o previsto pela previsão, o % de desperdício contra a meta e os últimos 14 dias para corrigir. Alimenta o painel, a análise e a previsão. No PC é uma seção do menu lateral; no celular abre por cima das abas (com voltar) |
 | **Pessoas** | `/pessoas` | Duas abas: **Presentes agora** (quem está no local, por grupo, com busca) e **Cadastro** (pessoas e cartões; o administrador adiciona, edita, vincula cartões, ativa/desativa e importa planilha) |
-| **Assistente IA** | `/assistente` | Chat com previsões (amanhã, sexta, semanal), desperdício, precisão, feriados; perguntas rápidas |
-| **Relatórios** | `/relatorios` | Registros de acesso com filtro por período, nome/função e categoria; paginação; exportação em planilha do Excel (`.xlsx`, com as datas legíveis; num SystemFluxe antigo vem o CSV). Abre com o período padrão e os itens por página escolhidos em Configurações → Sistema |
+| **Assistente IA** | `/assistente` | Chat com previsões (amanhã, sexta, semanal), desperdício, precisão, feriados e dúvidas de uso do sistema (com a IA ligada no servidor, a mesma do site); perguntas rápidas. Cada pergunta leva a conversa anterior, para a IA entender "e para sexta?". O administrador tem o **Diagnóstico da IA** (ícone no topo; o mesmo de `/assistente/diagnostico`): a configuração lida do servidor e um teste passo a passo que diz onde a IA falha |
+| **Relatórios** | `/relatorios` | Registros de acesso com filtro por período, nome/função e categoria; paginação; exportação (botão de download) em **Excel** (`.xlsx`, com as datas legíveis; num SystemFluxe antigo vem o CSV) ou em **CSV** (para importar em outros sistemas), como os dois botões do site. Abre com o período padrão e os itens por página escolhidos em Configurações → Sistema |
 | **Configurações** | `/configuracoes` | As mesmas abas do site: **Perfil**, **Aparência**, **Notificações**, **Sistema**, **Integrações** (dispositivos IoT) e **Segurança**, mais **Aplicativo** (servidor, versão e sair). Detalhes abaixo |
 
-Outros detalhes: menu lateral escuro igual ao da web (no computador ele fica sempre visível e os cartões de resumo ficam lado a lado; no celular é um menu deslizante com barra de abas inferior), a logo oficial do SICAPDA, **atalho de IoT e sino** no cabeçalho (como no site), **tempo real**, *pull-to-refresh* em todas as telas, tema claro e escuro, e identidade visual idêntica à web (cores `#0D0D0D` / `#FFC107`, fontes **Sora** e **Inter**).
+Outros detalhes: menu lateral escuro igual ao da web (no computador ele fica sempre visível e os cartões de resumo ficam lado a lado; no celular é um menu deslizante com barra de abas inferior). No computador, como no site, o botão **«** recolhe o menu para uma faixa só com os ícones (o nome aparece ao passar o mouse) e **»** abre de novo; atalho **Ctrl + B**; a escolha fica salva no aparelho. Tocar no nome de quem está logado, embaixo do menu, abre Configurações → Perfil. Também: a logo oficial do SICAPDA, **atalho de IoT e sino** no cabeçalho (como no site), **tempo real**, *pull-to-refresh* em todas as telas, tema claro e escuro, e identidade visual idêntica à web (cores `#0D0D0D` / `#FFC107`, fontes **Sora** e **Inter**).
 
 ### Configurações
 
@@ -269,6 +270,7 @@ lib/
 │   ├── api_client.dart        # Cliente HTTP (Bearer token, erros, timeout)
 │   ├── cadastro_service.dart  # Cadastro de pessoas e cartões na API (+ normalização e regra do UID)
 │   ├── config_service.dart    # Configurações na API: perfil, senha, foto, preferências, sessões, IoT, sino, planilha
+│   ├── producao_service.dart  # Produção de refeições na API (GET/POST /api/producao)
 │   ├── ao_vivo.dart           # Tempo real (GET /api/aovivo): mudanças e acessos novos
 │   ├── arquivos.dart          # Escolher arquivo (CSV/foto), reduzir a foto, entregar o arquivo (compartilhar/Downloads)
 │   ├── versao.dart            # Versão mostrada no app (igual ao pubspec.yaml; um teste confere)
@@ -288,14 +290,16 @@ lib/
 │   └── page_header.dart       # Cabeçalho, atalho IoT, sino e lista de alertas
 └── screens/
     ├── login_screen.dart
-    ├── app_shell.dart         # Menu lateral (fixo no PC, deslizante no celular) + abas
+    ├── app_shell.dart         # Menu lateral (fixo e recolhível no PC, deslizante no celular) + abas
     ├── painel_screen.dart
     ├── analise_screen.dart
     ├── pessoas_screen.dart        # Abas "Presentes agora" e "Cadastro"
+    ├── producao_screen.dart       # Produção: quilos produzidos e desperdiçados por refeição e dia
     ├── cadastro_pessoas.dart      # Aba Cadastro: lista, busca, ações por pessoa e por cartão
     ├── cadastro_formularios.dart  # Formulários (adicionar/editar pessoa, vincular cartão) e lista de cartões lidos nas catracas
     ├── cadastro_importar.dart     # Importar planilha (CSV) e baixar o modelo
     ├── assistente_screen.dart
+    ├── diagnostico_ia_screen.dart # Diagnóstico da IA do assistente (só administrador)
     ├── relatorios_screen.dart
     ├── configuracoes_screen.dart  # Abas de Configurações + aba Aplicativo (servidor, versão, sair)
     ├── config_conta.dart          # Perfil (dados e foto) e Segurança (senha e sessões do site)
@@ -338,8 +342,10 @@ Todas as rotas ficam no SystemFluxe e, exceto o login, exigem o cabeçalho `Auth
 | `POST` | `/api/pessoas/importar` | `{csv}`: texto da planilha; devolve pessoas, cartões, linhas ignoradas e o motivo de cada uma (**administrador**) |
 | `GET` | `/api/pessoas/modelo` | Modelo da planilha (CSV) |
 | `GET` | `/api/relatorios?de&ate&busca&categoria&pagina` | Registros de acesso paginados (sem `de`, usa o período padrão da conta; itens por página da conta) |
+| `GET` / `POST` | `/api/producao` | `?data=yyyy-MM-dd`: o dia (refeições, totais, previsão e últimos 14 dias); `POST {data, itens: [{tipo, produzido, desperdicado?}]}` grava e devolve o dia |
 | `GET` | `/api/relatorios/exportar` | Os mesmos filtros; `?formato=xlsx` devolve a planilha do Excel (o app usa esta), sem o parâmetro devolve CSV |
-| `GET` / `POST` | `/api/assistente` | Informações do assistente / enviar pergunta `{mensagem}` |
+| `GET` / `POST` | `/api/assistente` | Informações do assistente (`ia`: o servidor responde com IA) / enviar pergunta `{mensagem, historico}` (as trocas anteriores da conversa; o app espera até 90 s pela resposta) |
+| `GET` / `POST` | `/api/assistente/diagnostico` | Diagnóstico da IA (**administrador**): `GET` a configuração lida do servidor (`{configuracao: [{rotulo, valor, estado}], ia}`); `POST` também testa passo a passo (`etapas: [{titulo, ok, detalhe, ms}]`, `tudoCerto`). O app espera até 3 min |
 | `POST` | `/api/perfil` | `{nome, email, cargo, senha_atual?}` (trocar o e-mail exige a senha atual); devolve o `usuario` atualizado |
 | `POST` | `/api/perfil/senha` | `{senha_atual, senha_nova, senha_confirmar}` |
 | `POST` | `/api/perfil/foto` | `{imagem}`: JPG ou PNG em base64 (até 5 MB); devolve o `usuario` com a foto nova |
@@ -368,7 +374,7 @@ flutter analyze
 flutter test
 ```
 
-Os testes cobrem formatação, cliente HTTP, servidor padrão (celular × web), sessão (inclusive cofre que falha), leitura dos modelos e o fluxo completo do app (login, navegação por todas as telas, logout e tema). As funções da versão 1.2 ficam em `test/configuracoes_test.dart`: perfil, foto (recorte e redução de verdade), senha, notificações, sistema, dispositivos IoT (cadastrar, token, simular, pesagem, somente leitura), sessões, sino e seus destinos, atalho IoT, tempo real (atualiza a aba e avisa; pausa em segundo plano), importação de planilha (inclusive CSV em Windows-1252), servidor antigo e a posição do campo do chat com e sem teclado (celular em pé e deitado, com as barras do Android 15). O Cadastro de pessoas tem o seu próprio arquivo (`test/cadastro_test.dart`): regras do UID, o que vai pela rede em cada ação, e as telas (adicionar, editar, vincular cartão com a lista das catracas atualizando sozinha, ativar/desativar com confirmação, somente leitura, servidor desatualizado, PC e tema escuro). Eles usam **respostas reais da API** salvas em `test/fixtures/`, então não precisam de internet nem de servidor.
+Os testes cobrem formatação, cliente HTTP, servidor padrão (celular × web), sessão (inclusive cofre que falha), leitura dos modelos e o fluxo completo do app (login, navegação por todas as telas, logout e tema). As funções da versão 1.2 ficam em `test/configuracoes_test.dart`: perfil, foto (recorte e redução de verdade), senha, notificações, sistema, dispositivos IoT (cadastrar, token, simular, pesagem, somente leitura), sessões, sino e seus destinos, atalho IoT, tempo real (atualiza a aba e avisa; pausa em segundo plano), importação de planilha (inclusive CSV em Windows-1252), servidor antigo e a posição do campo do chat com e sem teclado (celular em pé e deitado, com as barras do Android 15). O Cadastro de pessoas tem o seu próprio arquivo (`test/cadastro_test.dart`): regras do UID, o que vai pela rede em cada ação, e as telas (adicionar, editar, vincular cartão com a lista das catracas atualizando sozinha, ativar/desativar com confirmação, somente leitura, servidor desatualizado, PC e tema escuro). As novidades da 1.4 ficam em `test/novidades_1_4_test.dart` (Produção no menu e no atalho do Painel, menu lateral recolhível com Ctrl + B, campo do assistente com IA e Diagnóstico da IA) e `test/producao_test.dart` (a tela Produção). Eles usam **respostas reais da API** salvas em `test/fixtures/`, então não precisam de internet nem de servidor.
 
 ---
 
@@ -403,7 +409,7 @@ Os testes cobrem formatação, cliente HTTP, servidor padrão (celular × web), 
 | APK não instala no emulador ("INSTALL_FAILED_NO_MATCHING_ABIS") | Era o APK só ARM das versões antigas; a atual inclui x86_64. Baixe o APK novo. |
 | Na aba Cadastro: "O servidor ainda não tem o cadastro pelo aplicativo" | O app é mais novo que o SystemFluxe do servidor: as rotas `/api/pessoas/cadastro` e `/api/pessoas/*` ainda não existem lá. Publique a versão atual do SystemFluxe (`ApiController.php`, `PessoaController.php`, `CadastroPessoas.php` e `CadastroException.php`). |
 | Na aba Cadastro não aparecem os botões de adicionar e vincular | Só o administrador da empresa altera o cadastro; as outras contas só consultam. |
-| Em Configurações: "O servidor ainda não tem esta função pelo aplicativo" | O app 1.2 é mais novo que o SystemFluxe do servidor: faltam as rotas `/api/perfil`, `/api/preferencias`, `/api/dispositivos`, `/api/sessoes`, `/api/notificacoes` e `/api/aovivo`. Publique a versão atual do SystemFluxe (`ApiController.php`, `Conta.php`, `Integracoes.php`, `Notificacoes.php`, `Preferencia.php`, `CadastroPessoas.php`). Num servidor antigo o resto do app funciona; o tempo real só fica desligado. |
+| Em Configurações: "O servidor ainda não tem esta função pelo aplicativo" | O app (1.2 em diante) é mais novo que o SystemFluxe do servidor: faltam as rotas `/api/perfil`, `/api/preferencias`, `/api/dispositivos`, `/api/sessoes`, `/api/notificacoes` e `/api/aovivo`. Publique a versão atual do SystemFluxe (`ApiController.php`, `Conta.php`, `Integracoes.php`, `Notificacoes.php`, `Preferencia.php`, `CadastroPessoas.php`). Num servidor antigo o resto do app funciona; o tempo real só fica desligado. |
 | Em Integrações não aparecem "Adicionar dispositivo", "Novo token", "Simular leitura" e "Testar pesagem" | Só o administrador da empresa gerencia os dispositivos; as outras contas veem a lista e o desperdício de hoje. |
 | A tela não se atualiza sozinha | Confira Configurações → Sistema → **Atualizar em tempo real**. O tempo real também pausa com o app em segundo plano e volta ao abrir. |
 | A lista "Cartões lidos nas catracas" fica vazia | Nenhuma catraca leu um cartão ainda sem dono nos últimos 30 dias, ou falta rodar a *Migration 005* (tabela `cartoes_nao_cadastrados`) no banco. Dá para digitar o UID do mesmo jeito. |

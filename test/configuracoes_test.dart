@@ -827,6 +827,9 @@ void main() {
       if (tela.width > tela.height) {
         // deitado, o menu lateral (fixo) é mais alto que a tela: rola até o item
         await tester.scrollUntilVisible(find.text('Assistente IA'), 60, scrollable: find.byType(Scrollable).first);
+        // A lista monta itens um pouco abaixo da área visível: garante que o item está mesmo na tela antes do toque.
+        await tester.ensureVisible(find.text('Assistente IA').last);
+        await tester.pumpAndSettle();
       }
       await tester.tap(find.text(tela.width > tela.height ? 'Assistente IA' : 'IA').last);
       await tester.pumpAndSettle();
@@ -865,6 +868,57 @@ void main() {
     });
   });
 
+  group('assistente com IA', () {
+    Future<void> perguntar(WidgetTester tester, String texto) async {
+      await tester.enterText(find.byKey(const Key('campo-pergunta')), texto);
+      await tester.tap(find.byKey(const Key('btn-enviar-pergunta')));
+      await tester.pumpAndSettle();
+    }
+
+    Map<String, dynamic> corpo(http.Request r) => jsonDecode(r.body) as Map<String, dynamic>;
+
+    testWidgets('cada pergunta leva a conversa anterior; a pergunta que deu erro fica de fora', (tester) async {
+      final log = <http.Request>[];
+      var chamadas = 0;
+      await abrirApp(
+        tester,
+        fakeApi(log: log, overrides: {
+          'GET /api/assistente': (req) => jsonResposta({...fixtureJson('assistente'), 'ia': true}),
+          'POST /api/assistente': (req) {
+            chamadas++;
+            if (chamadas == 2) return jsonResposta({'sucesso': false, 'mensagem': 'Falha temporária.'}, 500);
+            return jsonResposta({'sucesso': true, 'resposta': 'Resposta $chamadas', 'ia': true, 'hora': '10:00'});
+          },
+        }),
+      );
+      await tester.tap(find.text('IA').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Com IA · seus dados e o uso do SICAPDA'), findsOneWidget);
+
+      await perguntar(tester, 'Previsão para amanhã');
+      await perguntar(tester, 'pergunta que falha');
+      await perguntar(tester, 'e para sexta?');
+
+      final posts = log.where((r) => r.method == 'POST' && r.url.path == '/api/assistente').map(corpo).toList();
+      expect(posts, hasLength(3));
+      expect(posts[0]['mensagem'], 'Previsão para amanhã');
+      // A saudação vai junto (o servidor descarta), mas a resposta ainda não existe.
+      expect((posts[0]['historico'] as List).map((m) => m['autor']), ['bot']);
+      expect(posts[2]['mensagem'], 'e para sexta?');
+      final h = (posts[2]['historico'] as List).cast<Map<String, dynamic>>();
+      expect(h.map((m) => m['texto']).skip(1), ['Previsão para amanhã', 'Resposta 1']);
+      expect(h.map((m) => m['autor']).skip(1), ['usuario', 'bot']);
+      expect(find.text('Resposta 3'), findsOneWidget);
+    });
+
+    testWidgets('servidor sem IA: mesmo subtítulo de antes', (tester) async {
+      await abrirApp(tester, fakeApi());
+      await tester.tap(find.text('IA').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Previsões de pessoas e alimentos'), findsOneWidget);
+    });
+  });
+
   group('relatórios', () {
     testWidgets('exportar usa o mesmo período que está na tela (que pode vir do período padrão da conta)', (tester) async {
       final log = <http.Request>[];
@@ -877,7 +931,9 @@ void main() {
       compartilharArquivo = (p) async => compartilhados.add(p);
       addTearDown(() => compartilharArquivo = (p) => SharePlus.instance.share(p));
 
-      await tester.tap(find.byTooltip('Exportar Excel'));
+      await tester.tap(find.byTooltip('Exportar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Exportar Excel'));
       await tester.pumpAndSettle();
       final q = log.lastWhere((r) => r.url.path == '/api/relatorios/exportar').url.queryParameters;
       expect(q['de'], f['de']);
@@ -889,6 +945,29 @@ void main() {
       expect(compartilhados.single.fileNameOverrides!.single, 'relatorio-acessos_${f['de']}_a_${f['ate']}.xlsx');
       expect(arquivo.mimeType, mimeXlsx);
       expect(await tester.runAsync(() => arquivo.readAsBytes()), [0x50, 0x4B, 3, 4, 20, 0]);
+    });
+
+    testWidgets('CSV, como o segundo botão do site: mesmo período, formato=csv e arquivo .csv', (tester) async {
+      final log = <http.Request>[];
+      await abrirApp(tester, fakeApi(log: log));
+      await tester.tap(find.text('Relatórios').last);
+      await tester.pumpAndSettle();
+      final f = fixtureJson('relatorios')['filtros'] as Map<String, dynamic>;
+
+      final compartilhados = <ShareParams>[];
+      compartilharArquivo = (p) async => compartilhados.add(p);
+      addTearDown(() => compartilharArquivo = (p) => SharePlus.instance.share(p));
+
+      await tester.tap(find.byTooltip('Exportar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Exportar CSV'));
+      await tester.pumpAndSettle();
+      final q = log.lastWhere((r) => r.url.path == '/api/relatorios/exportar').url.queryParameters;
+      expect(q['de'], f['de']);
+      expect(q['ate'], f['ate']);
+      expect(q['formato'], 'csv');
+      expect(compartilhados.single.fileNameOverrides!.single, 'relatorio-acessos_${f['de']}_a_${f['ate']}.csv');
+      expect(compartilhados.single.files!.single.mimeType, 'text/csv');
     });
 
     test('relatório baixado: .xlsx quando o servidor manda a planilha, .csv num servidor antigo', () {

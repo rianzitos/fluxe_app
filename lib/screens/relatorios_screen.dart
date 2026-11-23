@@ -138,7 +138,9 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> with TabRefresh {
     if (r != null) _preset(r.start, r.end);
   }
 
-  Future<void> _exportar() async {
+  /// [formato] 'xlsx' (planilha do Excel, o padrão) ou 'csv' (texto para importar em outros sistemas), os dois
+  /// botões do site.
+  Future<void> _exportar(String formato) async {
     if (_exportando) return;
     setState(() => _exportando = true);
     final messenger = ScaffoldMessenger.of(context);
@@ -151,7 +153,7 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> with TabRefresh {
         ..addAll({
           if (_deAplicado.isNotEmpty) 'de': _deAplicado,
           if (_ateAplicado.isNotEmpty) 'ate': _ateAplicado,
-          'formato': 'xlsx',
+          'formato': formato,
         });
       final bytes = await AppScope.read(context).api.getBytes('/relatorios/exportar', query: q);
       final tipo = tipoDoRelatorio(bytes, 'relatorio-acessos_${_deAplicado}_a_$_ateAplicado');
@@ -180,13 +182,39 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> with TabRefresh {
           subtitle: 'Registros de acesso do sistema',
           onMenu: widget.onMenu,
           actions: [
-            IconButton(
-              tooltip: 'Exportar Excel',
-              onPressed: _exportando ? null : _exportar,
-              icon: _exportando
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent))
-                  : Icon(Icons.file_download_outlined, color: context.pal.text),
-            ),
+            if (_exportando)
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent)),
+              )
+            else
+              // Como no site: "Exportar Excel" e, ao lado, o CSV para outros sistemas.
+              PopupMenuButton<String>(
+                key: const Key('exportar-relatorio'),
+                tooltip: 'Exportar',
+                icon: Icon(Icons.file_download_outlined, color: context.pal.text),
+                onSelected: _exportar,
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'xlsx',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.table_chart_outlined),
+                      title: Text('Exportar Excel'),
+                      subtitle: Text('Planilha .xlsx, com as datas legíveis'),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'csv',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.description_outlined),
+                      title: Text('Exportar CSV'),
+                      subtitle: Text('Texto separado por ";", para outros sistemas'),
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
         Expanded(

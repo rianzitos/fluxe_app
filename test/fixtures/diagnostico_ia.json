@@ -1,0 +1,41 @@
+{
+  "sucesso": true,
+  "configuracao": [
+    {
+      "rotulo": "PHP",
+      "valor": "8.3.6",
+      "estado": "ok"
+    },
+    {
+      "rotulo": "Extensão cURL",
+      "valor": "8.5.0 (OpenSSL/3.0.13)",
+      "estado": "ok"
+    },
+    {
+      "rotulo": "IA_API_KEY",
+      "valor": "vazia ou não encontrada no config/.env",
+      "estado": "erro"
+    },
+    {
+      "rotulo": "IA_MODEL",
+      "valor": "gemini-2.5-flash",
+      "estado": "ok"
+    },
+    {
+      "rotulo": "IA_BASE_URL",
+      "valor": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "estado": "ok"
+    },
+    {
+      "rotulo": "Arquivo de regras (app/conhecimento/assistente.md)",
+      "valor": "encontrado",
+      "estado": "ok"
+    },
+    {
+      "rotulo": "IA ligada no assistente",
+      "valor": "não",
+      "estado": "erro"
+    }
+  ],
+  "ia": false
+}
