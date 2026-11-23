@@ -555,11 +555,15 @@ class AssistenteInfo {
   final List<Alerta> eventos;
   final List<String> perguntasRapidas;
 
+  /// O servidor responde com IA (Claude): além dos números, tira dúvidas de uso do sistema.
+  final bool ia;
+
   const AssistenteInfo({
     required this.boasVindas,
     required this.precisao,
     required this.eventos,
     required this.perguntasRapidas,
+    this.ia = false,
   });
 
   factory AssistenteInfo.fromJson(Map<String, dynamic> j) {
@@ -569,6 +573,7 @@ class AssistenteInfo {
       precisao: p == null ? null : PrecisaoIA(_d(p['precisao']) ?? 0, _i(p['dias'])),
       eventos: _list(j['eventos']).map(Alerta.fromJson).toList(),
       perguntasRapidas: _strings(j['perguntasRapidas']),
+      ia: _b(j['ia']),
     );
   }
 }
