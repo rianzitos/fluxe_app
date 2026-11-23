@@ -555,7 +555,7 @@ class AssistenteInfo {
   final List<Alerta> eventos;
   final List<String> perguntasRapidas;
 
-  /// O servidor responde com IA (Claude): além dos números, tira dúvidas de uso do sistema.
+  /// O servidor responde com IA: além dos números, tira dúvidas de uso do sistema.
   final bool ia;
 
   const AssistenteInfo({
@@ -1051,4 +1051,49 @@ class ProducaoDia {
       temBalanca: _b(j['temBalanca']),
     );
   }
+}
+
+// ─── Diagnóstico da IA do assistente (/api/assistente/diagnostico, só administrador) ───
+
+/// Uma linha da configuração lida do servidor: estado 'ok' | 'aviso' | 'erro'.
+class LinhaDiagnostico {
+  final String rotulo;
+  final String valor;
+  final String estado;
+
+  const LinhaDiagnostico({required this.rotulo, required this.valor, this.estado = 'ok'});
+
+  factory LinhaDiagnostico.fromJson(Map<String, dynamic> j) =>
+      LinhaDiagnostico(rotulo: _s(j['rotulo']), valor: _s(j['valor']), estado: _s(j['estado'], 'ok'));
+}
+
+/// Uma etapa do teste (conexão, pergunta com ferramentas, consulta aos dados, recusa de assunto fora do sistema).
+class EtapaDiagnostico {
+  final String titulo;
+  final bool ok;
+  final String detalhe;
+  final int ms;
+
+  const EtapaDiagnostico({required this.titulo, required this.ok, this.detalhe = '', this.ms = 0});
+
+  factory EtapaDiagnostico.fromJson(Map<String, dynamic> j) =>
+      EtapaDiagnostico(titulo: _s(j['titulo']), ok: _b(j['ok']), detalhe: _s(j['detalhe']), ms: _i(j['ms']));
+}
+
+class DiagnosticoIA {
+  final List<LinhaDiagnostico> configuracao;
+  final bool ia;
+
+  /// null = ainda não testou (GET); a lista vem do POST.
+  final List<EtapaDiagnostico>? etapas;
+  final bool tudoCerto;
+
+  const DiagnosticoIA({required this.configuracao, this.ia = false, this.etapas, this.tudoCerto = false});
+
+  factory DiagnosticoIA.fromJson(Map<String, dynamic> j) => DiagnosticoIA(
+        configuracao: _list(j['configuracao']).map(LinhaDiagnostico.fromJson).toList(),
+        ia: _b(j['ia']),
+        etapas: j['etapas'] is List ? _list(j['etapas']).map(EtapaDiagnostico.fromJson).toList() : null,
+        tudoCerto: _b(j['tudoCerto']),
+      );
 }

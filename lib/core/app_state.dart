@@ -128,6 +128,9 @@ class AppController extends ChangeNotifier {
   /// Atualizar as telas sozinho e avisar novos acessos (Configurações → Sistema). Vale para este aparelho.
   bool aoVivoAtivo = true;
 
+  /// Menu lateral recolhido (só os ícones), no PC e no tablet deitado. Como no site, a escolha fica salva.
+  bool menuRecolhido = false;
+
   /// Tempo real (GET /api/aovivo). Quem liga e desliga é a estrutura principal do app (AppShell).
   late final AoVivo aoVivo = AoVivo(() => _api);
 
@@ -156,6 +159,7 @@ class AppController extends ChangeNotifier {
     baseUrl = _prefs.getString('base_url') ?? defaultBaseUrl;
     themeMode = _themeFromName(_prefs.getString('tema'));
     aoVivoAtivo = _prefs.getBool('ao_vivo') ?? true;
+    menuRecolhido = _prefs.getBool('menu_recolhido') ?? false;
 
     try {
       _token = await _tokens.read();
@@ -285,6 +289,12 @@ class AppController extends ChangeNotifier {
     aoVivoAtivo = ativo;
     await _prefs.setBool('ao_vivo', ativo);
     notifyListeners();
+  }
+
+  Future<void> setMenuRecolhido(bool recolhido) async {
+    menuRecolhido = recolhido;
+    notifyListeners();
+    await _prefs.setBool('menu_recolhido', recolhido);
   }
 
   void setAlertas(List<Alerta> list) {

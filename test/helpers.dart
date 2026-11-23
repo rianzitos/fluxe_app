@@ -77,6 +77,9 @@ MockClient fakeApi({
               ? http.Response.bytes([0x50, 0x4B, 3, 4, 20, 0], 200,
                   headers: {'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})
               : http.Response.bytes(utf8.encode('\uFEFFNome;Função\n'), 200, headers: {'content-type': 'text/csv; charset=utf-8'});
+        case '/api/assistente/diagnostico':
+          // Respostas reais de um servidor sem IA_API_KEY: GET = configuração; POST = o teste (para na etapa 1).
+          return ok(req.method == 'POST' ? 'diagnostico_ia_teste' : 'diagnostico_ia');
         case '/api/assistente':
           return ok(req.method == 'POST' ? 'assistente_post' : 'assistente');
 

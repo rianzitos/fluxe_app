@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../core/app_state.dart';
 import '../core/layout.dart';
@@ -31,6 +32,11 @@ const _destinos = [
   _Destino('Relatórios', Icons.assessment_outlined, Icons.assessment_rounded),
 ];
 
+/// Produção não tem lugar na barra de abas do celular (lá ela abre por cima, como Configurações). No PC e no
+/// tablet deitado ela é uma seção do menu lateral, como no site, e fica nesta posição do IndexedStack.
+const _iProducao = 5;
+const _nSecoes = 6;
+
 /// Estrutura principal: menu lateral escuro (igual à sidebar da web) + barra de abas.
 ///
 /// Também liga o tempo real (como o "Ao vivo" do site): enquanto o app está aberto na tela, a aba visível se
@@ -45,7 +51,7 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _visited = <int>{0};
-  final _ticks = List.generate(_destinos.length, (_) => ValueNotifier<int>(0));
+  final _ticks = List.generate(_nSecoes, (_) => ValueNotifier<int>(0));
   int _index = 0;
 
   late final AppController _app = AppScope.read(context);
@@ -149,7 +155,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (aba != null) {
       _select(aba);
     } else if (caminho == '/producao') {
-      _openProducao();
+      _abrirProducao();
     } else if (caminho == '/configuracoes') {
       _openConfig(abaDoLink(link));
     }
@@ -173,13 +179,26 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       1 => AnaliseScreen(onMenu: _openMenu, tabRefresh: _ticks[1]),
       2 => PessoasScreen(onMenu: _openMenu, tabRefresh: _ticks[2]),
       3 => AssistenteScreen(onMenu: _openMenu),
-      _ => RelatoriosScreen(onMenu: _openMenu, tabRefresh: _ticks[4]),
+      4 => RelatoriosScreen(onMenu: _openMenu, tabRefresh: _ticks[4]),
+      _ => ProducaoScreen(onMenu: _openMenu, tabRefresh: _ticks[_iProducao]),
     };
   }
 
-  /// Produção abre por cima (como Configurações): é uma tela de cadastro, não uma aba de consulta.
-  void _openProducao() {
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ProducaoScreen()));
+  /// Produção: no PC é uma seção do menu lateral (como no site); no celular abre por cima, como Configurações,
+  /// porque não cabe na barra de abas. Ao voltar, a aba aberta (painel, análise) recarrega com os números novos.
+  Future<void> _abrirProducao() async {
+    if (isWide(context)) {
+      _select(_iProducao);
+      return;
+    }
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ProducaoScreen()));
+    if (mounted) _ticks[_index].value++;
+  }
+
+  /// Recolhe ou abre o menu lateral do PC (botão « / » ou Ctrl + B, como no site). Fica salvo no aparelho.
+  void _alternarMenu() {
+    if (!isWide(context)) return;
+    _app.setMenuRecolhido(!_app.menuRecolhido);
   }
 
   void _openConfig([AbaConfig aba = AbaConfig.perfil]) {
@@ -201,33 +220,49 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       bottom: largo,
       child: IndexedStack(
         index: _index,
-        children: [for (var i = 0; i < _destinos.length; i++) _page(i)],
+        children: [for (var i = 0; i < _nSecoes; i++) _page(i)],
       ),
     );
 
     // PC / tablet deitado: menu lateral sempre visível (igual ao painel web), sem barra de abas.
     if (largo) {
-      return Scaffold(
-        key: _scaffoldKey,
-        body: Row(
-          children: [
-            SizedBox(
-              width: kSidebarWidth,
-              child: _SideMenu(
-                fixed: true,
-                selected: _index,
-                onSelect: _select,
-                onConfig: _openConfig,
-                onProducao: _openProducao,
-              ),
+      final recolhido = AppScope.of(context).menuRecolhido;
+      return CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.keyB, control: true): _alternarMenu,
+          const SingleActivator(LogicalKeyboardKey.keyB, meta: true): _alternarMenu,
+        },
+        child: Focus(
+          autofocus: true,
+          child: Scaffold(
+            key: _scaffoldKey,
+            body: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  width: recolhido ? kSidebarRecolhidaWidth : kSidebarWidth,
+                  child: ClipRect(
+                    child: _SideMenu(
+                      fixed: true,
+                      recolhido: recolhido,
+                      onRecolher: _alternarMenu,
+                      selected: _index,
+                      onSelect: _select,
+                      onConfig: _openConfig,
+                      onProducao: _abrirProducao,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: kContentMaxWidth), child: conteudo),
+                  ),
+                ),
+              ],
             ),
-            Expanded(
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: kContentMaxWidth), child: conteudo),
-              ),
-            ),
-          ],
+          ),
         ),
       );
     }
@@ -246,13 +281,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         },
         onProducao: () {
           Navigator.of(context).pop();
-          _openProducao();
+          _abrirProducao();
         },
       ),
       body: conteudo,
       // Com o teclado aberto (ex.: escrevendo no chat do assistente) a barra de abas sai de cena: sobra espaço
-      // para a conversa e o campo de texto fica logo acima do teclado.
-      bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0 ? null : NavigationBar(
+      // para a conversa e o campo de texto fica logo acima do teclado. Também some se a janela do PC estreitar
+      // com a Produção aberta (ela não tem aba): o menu ☰ do cabeçalho continua levando a todas as telas.
+      bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0 || _index >= _destinos.length ? null : NavigationBar(
         selectedIndex: _index,
         height: 66,
         onDestinationSelected: _select,
@@ -273,9 +309,15 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 }
 
+/// Menu lateral escuro, com os itens na ordem do menu do site: Painel, Análise mensal, Produção, Pessoas,
+/// Assistente, Relatórios e Configurações. No PC ([fixed]) pode ser recolhido para uma faixa só com os ícones.
 class _SideMenu extends StatelessWidget {
   /// true = painel fixo ao lado do conteúdo (PC); false = menu deslizante (celular).
   final bool fixed;
+
+  /// Só os ícones (PC): o nome aparece ao passar o mouse ou segurar o dedo, como no site.
+  final bool recolhido;
+  final VoidCallback? onRecolher;
   final int selected;
   final ValueChanged<int> onSelect;
   final VoidCallback onConfig;
@@ -283,6 +325,8 @@ class _SideMenu extends StatelessWidget {
 
   const _SideMenu({
     this.fixed = false,
+    this.recolhido = false,
+    this.onRecolher,
     required this.selected,
     required this.onSelect,
     required this.onConfig,
@@ -291,49 +335,74 @@ class _SideMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
-    final user = app.user;
-
     Widget painel(Widget child) => fixed
         ? ColoredBox(color: AppColors.black, child: child)
         : Drawer(backgroundColor: AppColors.black, shape: const RoundedRectangleBorder(), child: child);
 
-    return painel(
-      SafeArea(
-        child: Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(24, 28, 24, 20),
-              child: Align(alignment: Alignment.centerLeft, child: SicapdaLogo(width: 196)),
+    // Compacto pela largura real (e não só pela escolha): durante a animação de abrir, o menu ainda estreito
+    // continua com o desenho compacto, sem nada cortado.
+    return painel(SafeArea(
+      child: LayoutBuilder(
+        builder: (context, c) => _conteudo(context, compacto: fixed && (recolhido || c.maxWidth < 200)),
+      ),
+    ));
+  }
+
+  Widget _conteudo(BuildContext context, {required bool compacto}) {
+    final app = AppScope.of(context);
+    final user = app.user;
+
+    Widget item(String label, IconData icon, {required bool active, required VoidCallback onTap, Key? key}) =>
+        _MenuItem(key: key, label: label, icon: icon, active: active, compacto: compacto, onTap: onTap);
+
+    final itens = <Widget>[
+      for (var i = 0; i < _destinos.length; i++) ...[
+        item(_destinos[i].label, _destinos[i].iconSelected, active: i == selected, onTap: () => onSelect(i)),
+        // Mesma ordem do menu do site: Painel, Análise mensal, Produção, Pessoas...
+        if (i == 1)
+          item('Produção', Icons.restaurant_rounded,
+              key: const Key('menu-producao'), active: selected == _iProducao, onTap: onProducao),
+      ],
+      item('Configurações', Icons.settings_rounded, active: false, onTap: onConfig),
+    ];
+
+    final botaoRecolher = onRecolher == null
+        ? null
+        : IconButton(
+            key: const Key('btn-recolher-menu'),
+            tooltip: compacto ? 'Abrir menu (Ctrl + B)' : 'Recolher menu (Ctrl + B)',
+            onPressed: onRecolher,
+            style: IconButton.styleFrom(
+              backgroundColor: const Color(0xFF1C1C21),
+              foregroundColor: const Color(0xFFB0B0B8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                children: [
-                  for (var i = 0; i < _destinos.length; i++) ...[
-                    _MenuItem(
-                      label: _destinos[i].label,
-                      icon: _destinos[i].iconSelected,
-                      active: i == selected,
-                      onTap: () => onSelect(i),
-                    ),
-                    // Mesma ordem do menu do site: Painel, Análise mensal, Produção, Pessoas...
-                    if (i == 1)
-                      _MenuItem(label: 'Produção', icon: Icons.restaurant_rounded, active: false, onTap: onProducao),
-                  ],
-                  _MenuItem(
-                    label: 'Configurações',
-                    icon: Icons.settings_rounded,
-                    active: false,
-                    onTap: onConfig,
-                  ),
-                ],
-              ),
-            ),
-            const Divider(color: Color(0xFF26262B), height: 1),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
+            icon: Icon(compacto ? Icons.keyboard_double_arrow_right_rounded : Icons.keyboard_double_arrow_left_rounded,
+                size: 20),
+          );
+
+    final sair = IconButton(
+      tooltip: 'Sair',
+      onPressed: () async {
+        final ok = await confirmLogout(context);
+        if (ok && context.mounted) {
+          if (!fixed) Navigator.of(context).pop(); // fecha o menu deslizante
+          await app.logout();
+        }
+      },
+      icon: const Icon(Icons.logout_rounded, color: Color(0xFFB0B0B8)),
+    );
+
+    // Tocar na foto ou no nome abre Configurações → Perfil, como no site.
+    final perfil = InkWell(
+      key: const Key('menu-perfil'),
+      borderRadius: BorderRadius.circular(12),
+      onTap: onConfig,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: compacto
+            ? UserAvatar(user?.nome ?? '', user?.foto, radius: 20)
+            : Row(
                 children: [
                   UserAvatar(user?.nome ?? '', user?.foto, radius: 21),
                   const SizedBox(width: 12),
@@ -343,12 +412,16 @@ class _SideMenu extends StatelessWidget {
                       children: [
                         Text(user?.nome ?? '',
                             overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 2),
                         Row(
                           children: [
-                            Text(user?.perfilRotulo ?? '',
-                                style: const TextStyle(color: Color(0xFF9A9AA3), fontSize: 12.5)),
+                            Flexible(
+                              child: Text(user?.perfilRotulo ?? '',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Color(0xFF9A9AA3), fontSize: 12.5)),
+                            ),
                             const SizedBox(width: 6),
                             const CircleAvatar(radius: 3, backgroundColor: Color(0xFF22C55E)),
                           ],
@@ -356,63 +429,102 @@ class _SideMenu extends StatelessWidget {
                       ],
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Sair',
-                    onPressed: () async {
-                      final ok = await confirmLogout(context);
-                      if (ok && context.mounted) {
-                        if (!fixed) Navigator.of(context).pop(); // fecha o menu deslizante
-                        await app.logout();
-                      }
-                    },
-                    icon: const Icon(Icons.logout_rounded, color: Color(0xFFB0B0B8)),
-                  ),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
     );
-  }
 
+    return Column(
+      children: [
+        if (compacto)
+          Padding(padding: const EdgeInsets.fromLTRB(0, 24, 0, 16), child: Center(child: botaoRecolher))
+        else
+          Padding(
+            padding: EdgeInsets.fromLTRB(24, 28, botaoRecolher == null ? 24 : 12, 20),
+            child: Row(
+              children: [
+                const Expanded(child: Align(alignment: Alignment.centerLeft, child: SicapdaLogo(width: 196))),
+                if (botaoRecolher != null) ...[const SizedBox(width: 8), botaoRecolher],
+              ],
+            ),
+          ),
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.symmetric(horizontal: compacto ? 12 : 14),
+            children: itens,
+          ),
+        ),
+        const Divider(color: Color(0xFF26262B), height: 1),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: compacto ? 8 : 12, vertical: compacto ? 12 : 12),
+          child: compacto
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [Tooltip(message: user?.nome ?? 'Meu perfil', child: perfil), const SizedBox(height: 6), sair],
+                )
+              : Row(children: [Expanded(child: perfil), sair]),
+        ),
+      ],
+    );
+  }
 }
 
 class _MenuItem extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool active;
+  final bool compacto;
   final VoidCallback onTap;
 
-  const _MenuItem({required this.label, required this.icon, required this.active, required this.onTap});
+  const _MenuItem({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.onTap,
+    this.compacto = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Material(
-        color: active ? const Color(0xFF2A2210) : Colors.transparent,
+    final cor = active ? AppColors.accent : const Color(0xFFD4D4D8);
+    final botao = Material(
+      color: active ? const Color(0xFF2A2210) : Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            child: Row(
-              children: [
-                Icon(icon, size: 21, color: active ? AppColors.accent : const Color(0xFFD4D4D8)),
-                const SizedBox(width: 14),
-                Text(label,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                      color: active ? AppColors.accent : const Color(0xFFD4D4D8),
-                    )),
-              ],
-            ),
-          ),
+        onTap: onTap,
+        child: Padding(
+          padding: compacto
+              ? const EdgeInsets.symmetric(vertical: 14)
+              : const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: compacto
+              ? Center(child: Icon(icon, size: 22, color: cor, semanticLabel: label))
+              : Row(
+                  children: [
+                    Icon(icon, size: 21, color: cor),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: false,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                            color: cor,
+                          )),
+                    ),
+                  ],
+                ),
         ),
       ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: compacto
+          ? Tooltip(message: label, preferBelow: false, waitDuration: const Duration(milliseconds: 250), child: botao)
+          : botao,
     );
   }
 }

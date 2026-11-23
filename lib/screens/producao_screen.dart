@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/api_client.dart';
@@ -12,10 +13,17 @@ import '../widgets/page_header.dart';
 
 /// Produção (igual à tela /producao do site): quantos quilos foram produzidos e desperdiçados em cada refeição do
 /// dia. O que é salvo vai para a mesma tabela do painel, da análise mensal e da previsão, que se atualizam sozinhos.
+///
+/// Duas formas de abrir: como seção do menu lateral no PC ([onMenu] informado, igual às outras telas) ou por cima
+/// das abas no celular (sem [onMenu]: tem botão de voltar e pergunta antes de sair com valores não salvos).
 class ProducaoScreen extends StatefulWidget {
   /// Dia que abre primeiro (yyyy-MM-dd); sem ele, hoje.
   final String? dataInicial;
-  const ProducaoScreen({super.key, this.dataInicial});
+  final VoidCallback? onMenu;
+
+  /// Seção do menu reaberta (PC): recarrega o dia se não houver nada digitado.
+  final ValueListenable<int>? tabRefresh;
+  const ProducaoScreen({super.key, this.dataInicial, this.onMenu, this.tabRefresh});
 
   @override
   State<ProducaoScreen> createState() => _ProducaoScreenState();
@@ -59,11 +67,13 @@ class _ProducaoScreenState extends State<ProducaoScreen> {
     super.initState();
     _carregar(widget.dataInicial);
     _app.aoVivo.mudancas.addListener(_mudouNoServidor);
+    widget.tabRefresh?.addListener(_mudouNoServidor);
   }
 
   @override
   void dispose() {
     _app.aoVivo.mudancas.removeListener(_mudouNoServidor);
+    widget.tabRefresh?.removeListener(_mudouNoServidor);
     for (final c in [..._produzido.values, ..._desperdicado.values]) {
       c.dispose();
     }
@@ -234,6 +244,20 @@ class _ProducaoScreenState extends State<ProducaoScreen> {
       );
     }
 
+    const titulo = 'Produção';
+    const subtitulo = 'Quilos produzidos e desperdiçados por refeição';
+
+    // Seção do menu lateral (PC): o menu e o sino ficam no cabeçalho, como nas outras telas. Trocar de seção não
+    // perde o que foi digitado (a tela continua montada), então não precisa perguntar nada.
+    if (widget.onMenu != null) {
+      return Column(
+        children: [
+          PageHeader(title: titulo, subtitle: subtitulo, onMenu: widget.onMenu),
+          Expanded(child: corpo),
+        ],
+      );
+    }
+
     return PopScope(
       canPop: !_alterado,
       onPopInvokedWithResult: (saiu, _) async {
@@ -269,11 +293,7 @@ class _ProducaoScreenState extends State<ProducaoScreen> {
               constraints: const BoxConstraints(maxWidth: kContentMaxWidth),
               child: Column(
                 children: [
-                  const PageHeader(
-                    title: 'Produção',
-                    subtitle: 'Quilos produzidos e desperdiçados por refeição',
-                    showBell: false,
-                  ),
+                  const PageHeader(title: titulo, subtitle: subtitulo, showBell: false),
                   Expanded(child: corpo),
                 ],
               ),

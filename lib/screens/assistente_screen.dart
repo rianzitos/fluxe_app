@@ -7,6 +7,7 @@ import '../core/theme.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
 import '../widgets/page_header.dart';
+import 'diagnostico_ia_screen.dart';
 
 class _Msg {
   final String texto;
@@ -124,6 +125,17 @@ class _AssistenteScreenState extends State<AssistenteScreen> {
           title: 'Assistente IA',
           subtitle: info?.ia == true ? 'Com IA · seus dados e o uso do SICAPDA' : 'Previsões de pessoas e alimentos',
           onMenu: widget.onMenu,
+          actions: [
+            // Só o administrador: o mesmo teste de /assistente/diagnostico do site, para saber por que a IA não responde.
+            if (AppScope.of(context).user?.perfil == 'admin')
+              IconButton(
+                key: const Key('diagnostico-ia'),
+                tooltip: 'Diagnóstico da IA',
+                onPressed: () => Navigator.of(context)
+                    .push(MaterialPageRoute<void>(builder: (_) => const DiagnosticoIAScreen())),
+                icon: Icon(Icons.troubleshoot_rounded, color: context.pal.text),
+              ),
+          ],
         ),
         if (_infoError != null && info == null)
           Expanded(child: ErrorState(error: _infoError!, onRetry: _loadInfo))
@@ -139,7 +151,13 @@ class _AssistenteScreenState extends State<AssistenteScreen> {
               itemBuilder: (context, i) => i == _msgs.length ? const _Typing() : _Bubble(_msgs[i]),
             ),
           ),
-          _InputBar(controller: _input, sending: _sending, onSend: () => _send(_input.text)),
+          _InputBar(
+            controller: _input,
+            sending: _sending,
+            // Com a IA, como no site: também tira dúvidas de uso do sistema.
+            dica: info.ia ? 'Pergunte sobre os dados ou como usar o sistema...' : 'Digite sua pergunta...',
+            onSend: () => _send(_input.text),
+          ),
         ],
       ],
     );
@@ -291,7 +309,8 @@ class _InputBar extends StatelessWidget {
   final TextEditingController controller;
   final bool sending;
   final VoidCallback onSend;
-  const _InputBar({required this.controller, required this.sending, required this.onSend});
+  final String dica;
+  const _InputBar({required this.controller, required this.sending, required this.onSend, required this.dica});
 
   @override
   Widget build(BuildContext context) {
@@ -317,7 +336,7 @@ class _InputBar extends StatelessWidget {
                   style: TextStyle(color: pal.text, fontSize: 14.5),
                   decoration: InputDecoration(
                     counterText: '',
-                    hintText: 'Digite sua pergunta...',
+                    hintText: dica,
                     hintStyle: TextStyle(color: pal.textMuted),
                     filled: true,
                     fillColor: pal.card,

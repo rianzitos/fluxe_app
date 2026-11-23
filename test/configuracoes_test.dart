@@ -931,7 +931,9 @@ void main() {
       compartilharArquivo = (p) async => compartilhados.add(p);
       addTearDown(() => compartilharArquivo = (p) => SharePlus.instance.share(p));
 
-      await tester.tap(find.byTooltip('Exportar Excel'));
+      await tester.tap(find.byTooltip('Exportar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Exportar Excel'));
       await tester.pumpAndSettle();
       final q = log.lastWhere((r) => r.url.path == '/api/relatorios/exportar').url.queryParameters;
       expect(q['de'], f['de']);
@@ -943,6 +945,29 @@ void main() {
       expect(compartilhados.single.fileNameOverrides!.single, 'relatorio-acessos_${f['de']}_a_${f['ate']}.xlsx');
       expect(arquivo.mimeType, mimeXlsx);
       expect(await tester.runAsync(() => arquivo.readAsBytes()), [0x50, 0x4B, 3, 4, 20, 0]);
+    });
+
+    testWidgets('CSV, como o segundo botão do site: mesmo período, formato=csv e arquivo .csv', (tester) async {
+      final log = <http.Request>[];
+      await abrirApp(tester, fakeApi(log: log));
+      await tester.tap(find.text('Relatórios').last);
+      await tester.pumpAndSettle();
+      final f = fixtureJson('relatorios')['filtros'] as Map<String, dynamic>;
+
+      final compartilhados = <ShareParams>[];
+      compartilharArquivo = (p) async => compartilhados.add(p);
+      addTearDown(() => compartilharArquivo = (p) => SharePlus.instance.share(p));
+
+      await tester.tap(find.byTooltip('Exportar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Exportar CSV'));
+      await tester.pumpAndSettle();
+      final q = log.lastWhere((r) => r.url.path == '/api/relatorios/exportar').url.queryParameters;
+      expect(q['de'], f['de']);
+      expect(q['ate'], f['ate']);
+      expect(q['formato'], 'csv');
+      expect(compartilhados.single.fileNameOverrides!.single, 'relatorio-acessos_${f['de']}_a_${f['ate']}.csv');
+      expect(compartilhados.single.files!.single.mimeType, 'text/csv');
     });
 
     test('relatório baixado: .xlsx quando o servidor manda a planilha, .csv num servidor antigo', () {

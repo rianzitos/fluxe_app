@@ -6,6 +6,9 @@ const double kWideBreakpoint = 900;
 /// Largura do menu lateral fixo.
 const double kSidebarWidth = 272;
 
+/// Largura do menu lateral recolhido (só os ícones), como a faixa de 78 px do site.
+const double kSidebarRecolhidaWidth = 80;
+
 /// Largura máxima do conteúdo em janelas largas (evita cartões esticados em monitores grandes).
 const double kContentMaxWidth = 1040;
 

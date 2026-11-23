@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../models/models.dart';
 import '../widgets/charts.dart';
 import '../widgets/common.dart';
+import '../widgets/navegacao.dart';
 import '../widgets/page_header.dart';
 import 'producao_screen.dart';
 
@@ -110,6 +111,12 @@ class _AnaliseScreenState extends State<AnaliseScreen> with TabRefresh {
               key: const Key('registrar-producao'),
               tooltip: 'Registrar produção',
               onPressed: () async {
+                // Dentro do app, a mesma navegação do menu (no PC a Produção é uma seção do menu lateral).
+                final shell = ShellNavegacao.maybeOf(context);
+                if (shell != null) {
+                  shell.abrirLink('/producao');
+                  return;
+                }
                 await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ProducaoScreen()));
                 reload(); // volta com os números novos
               },

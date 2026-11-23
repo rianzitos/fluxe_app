@@ -7,6 +7,7 @@ import '../core/theme.dart';
 import '../models/models.dart';
 import '../widgets/charts.dart';
 import '../widgets/common.dart';
+import '../widgets/navegacao.dart';
 import '../widgets/page_header.dart';
 
 /// Painel Geral: indicadores, previsão de demanda, distribuição e alertas.
@@ -127,7 +128,25 @@ class _DemandCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const CardTitle('Previsão de Demanda'),
+          CardTitle(
+            'Previsão de Demanda',
+            // Como no site: o "Realizado" do gráfico vem da produção registrada.
+            trailing: ShellNavegacao.maybeOf(context) == null
+                ? null
+                : TextButton.icon(
+                    key: const Key('painel-registrar-producao'),
+                    onPressed: () => ShellNavegacao.maybeOf(context)?.abrirLink('/producao'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: context.pal.textMuted,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      visualDensity: VisualDensity.compact,
+                      textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                    ),
+                    iconAlignment: IconAlignment.end,
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                    label: const Text('Registrar produção'),
+                  ),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 18,
