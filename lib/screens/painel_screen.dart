@@ -128,24 +128,30 @@ class _DemandCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CardTitle(
-            'Previsão de Demanda',
-            // Como no site: o "Realizado" do gráfico vem da produção registrada.
-            trailing: ShellNavegacao.maybeOf(context) == null
-                ? null
-                : TextButton.icon(
-                    key: const Key('painel-registrar-producao'),
-                    onPressed: () => ShellNavegacao.maybeOf(context)?.abrirLink('/producao'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: context.pal.textMuted,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      visualDensity: VisualDensity.compact,
-                      textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+          LayoutBuilder(
+            builder: (context, c) => CardTitle(
+              'Previsão de Demanda',
+              // Como no site: o "Realizado" do gráfico vem da produção registrada. No celular o rótulo encurta
+              // para o título caber numa linha só.
+              trailing: ShellNavegacao.maybeOf(context) == null
+                  ? null
+                  : Tooltip(
+                      message: 'Registrar produção',
+                      child: TextButton.icon(
+                        key: const Key('painel-registrar-producao'),
+                        onPressed: () => ShellNavegacao.maybeOf(context)?.abrirLink('/producao'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: context.pal.textMuted,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          visualDensity: VisualDensity.compact,
+                          textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                        ),
+                        iconAlignment: IconAlignment.end,
+                        icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                        label: Text(c.maxWidth < 360 ? 'Registrar' : 'Registrar produção'),
+                      ),
                     ),
-                    iconAlignment: IconAlignment.end,
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                    label: const Text('Registrar produção'),
-                  ),
+            ),
           ),
           const SizedBox(height: 8),
           Wrap(

@@ -164,8 +164,16 @@ class _DiagnosticoIAScreenState extends State<DiagnosticoIAScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text.rich(TextSpan(children: [
+                      WidgetSpan(
+                        alignment: PlaceholderAlignment.middle,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: Icon(e.ok ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                              size: 17, color: e.ok ? AppColors.success : AppColors.red),
+                        ),
+                      ),
                       TextSpan(
-                        text: e.ok ? '✔ Passou' : '✖ Falhou',
+                        text: e.ok ? 'Passou' : 'Falhou',
                         style: TextStyle(fontWeight: FontWeight.w700, color: e.ok ? AppColors.success : AppColors.red),
                       ),
                       TextSpan(text: ' · ${e.titulo} ', style: TextStyle(color: pal.text)),
