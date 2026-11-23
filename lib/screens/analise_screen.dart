@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../widgets/charts.dart';
 import '../widgets/common.dart';
 import '../widgets/page_header.dart';
+import 'producao_screen.dart';
 
 /// Análise Mensal: totais do mês, gráficos diários e insights.
 class AnaliseScreen extends StatefulWidget {
@@ -104,6 +105,17 @@ class _AnaliseScreenState extends State<AnaliseScreen> with TabRefresh {
           title: 'Análise Mensal',
           subtitle: _rotulo.isEmpty ? 'Carregando…' : _rotulo,
           onMenu: widget.onMenu,
+          actions: [
+            IconButton(
+              key: const Key('registrar-producao'),
+              tooltip: 'Registrar produção',
+              onPressed: () async {
+                await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ProducaoScreen()));
+                reload(); // volta com os números novos
+              },
+              icon: Icon(Icons.restaurant_rounded, color: context.pal.text),
+            ),
+          ],
         ),
         Expanded(
           child: AsyncBody<AnaliseData>(

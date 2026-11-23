@@ -65,6 +65,10 @@ MockClient fakeApi({
           return ok('analise');
         case '/api/pessoas':
           return ok('pessoas');
+        case '/api/producao':
+          // GET: o dia (resposta real); POST: grava e devolve o dia, como o servidor.
+          final dia = fixtureJson('producao');
+          return req.method == 'POST' ? jsonResposta({...dia, 'mensagem': 'Produção salva.'}) : jsonResposta(dia);
         case '/api/relatorios':
           return ok('relatorios');
         case '/api/relatorios/exportar':
